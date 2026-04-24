@@ -7,7 +7,7 @@ export const LINKAGE_PRESETS = [
     id: 'horst',
     name: 'Horst Link (4-bar)',
     examples: 'Trek, Specialized FSR, GT Sensor',
-    color: '#3b82f6',
+    color: '#38bdf8',
     description: 'Slightly falling ratio — progressive spring feel, moderate anti-squat',
     points: [
       { t: 0.00, lr: 3.20 },
@@ -27,7 +27,7 @@ export const LINKAGE_PRESETS = [
     id: 'vpp',
     name: 'VPP (Virtual Pivot Point)',
     examples: 'Santa Cruz, Intense',
-    color: '#00c97a',
+    color: '#fb923c',
     description: 'Falling then rising — mid-stroke support, bump compliance at end stroke',
     points: [
       { t: 0.00, lr: 3.30 },
@@ -47,7 +47,7 @@ export const LINKAGE_PRESETS = [
     id: 'dwlink',
     name: 'DW-Link',
     examples: 'Ibis, Pivot, Evil',
-    color: '#f0b429',
+    color: '#d97706',
     description: 'Strongly progressive — ramps up through stroke, excellent small-bump sensitivity',
     points: [
       { t: 0.00, lr: 3.50 },
@@ -67,7 +67,7 @@ export const LINKAGE_PRESETS = [
     id: 'singlepivot',
     name: 'Single Pivot',
     examples: 'Many hardtails, older designs',
-    color: '#e53e3e',
+    color: '#f87171',
     description: 'Constant ratio — linear spring behavior, no progressive feel',
     points: [
       { t: 0.00, lr: 3.00 },
@@ -81,7 +81,7 @@ export const LINKAGE_PRESETS = [
     id: 'flexstay',
     name: 'Flex Stay / UDH',
     examples: 'Yeti SB, Rocky Mountain Instinct',
-    color: '#a78bfa',
+    color: '#e879f9',
     description: 'Mildly falling — simple, low friction, slightly progressive',
     points: [
       { t: 0.00, lr: 3.10 },
