@@ -233,55 +233,61 @@ export default function SpringCalculator() {
         <div className="calc-outputs card">
           <div className="card-title">Results</div>
 
-          <div className="stat-row">
-            <Tip text="Leverage Ratio = wheel travel ÷ shock stroke. Tells you how much the shock amplifies force: a 3:1 LR means the spring must push 3× harder than your weight at the rear wheel.">
-              <span className="stat-label stat-label-tip">Leverage Ratio</span>
-            </Tip>
-            <span className="stat-value accent">{calc.geoLR ? calc.geoLR.toFixed(2) : '—'} : 1</span>
-          </div>
-
-          {linkageId && (
-            <div className="stat-row">
-              <Tip text="Because the leverage ratio isn't constant through travel, the LR at your sag point differs from the simple travel÷stroke average. This adjusted value is used for the spring rate calculation.">
-                <span className="stat-label stat-label-tip">LR at sag ({Math.round(sagPct * 100)}%)</span>
-              </Tip>
-              <span className="stat-value" style={{ color: activePreset?.color }}>
-                {calc.effectiveLR ? calc.effectiveLR.toFixed(2) : '—'} : 1
-                <span className="stat-modifier">{calc.linkageMod > 1 ? '+' : ''}{Math.round((calc.linkageMod - 1) * 100)}%</span>
-              </span>
-            </div>
-          )}
-
-          <div className="stat-row">
-            <Tip text="The actual force the rear shock must support. Formula: rider weight × rear bias. This is what the spring must be stiff enough to hold at your target sag point.">
-              <span className="stat-label stat-label-tip">Rear Load</span>
-            </Tip>
-            <span className="stat-value">
-              {Math.round(calc.rearForceN / G)} kg
-              <span style={{ color: 'var(--text-dim)' }}> · {Math.round(calc.rearForceN)} N</span>
-            </span>
-          </div>
-
-          <div className="rate-formula-note">
-            k = rider × bias × LR / (sag% × stroke)
-          </div>
-
-          <div className="big-rate-display">
-            <div className="big-rate-row">
-              <span className="big-rate-num" style={{ color: zone.color }}>{calc.nmm ? calc.nmm.toFixed(1) : '—'}</span>
-              <span className="big-rate-unit">N/mm</span>
-            </div>
-            <div className="big-rate-row">
-              <span className="big-rate-num" style={{ color: zone.color }}>{calc.lbin ? Math.round(calc.lbin) : '—'}</span>
-              <span className="big-rate-unit">lb/in</span>
-            </div>
-            <div className="big-rate-zone" style={{ color: zone.color }}>{zone.label} setup</div>
-            {calc.lbin && (
-              <div className="rate-nearest">
-                Nearest stock spring: <strong>{Math.round(calc.lbin / 25) * 25} lb/in</strong>
-                <InfoIcon text="Spring rates are sold in increments of 25 lb/in (or 50 N/mm). Round to nearest available. If between sizes, go stiffer for heavier/aggressive riding, softer for lighter/mellow riding." width={240} />
+          <div className="results-top">
+            {/* Left: secondary stats */}
+            <div className="results-stats">
+              <div className="stat-row">
+                <Tip text="Leverage Ratio = wheel travel ÷ shock stroke. Tells you how much the shock amplifies force: a 3:1 LR means the spring must push 3× harder than your weight at the rear wheel.">
+                  <span className="stat-label stat-label-tip">Leverage Ratio</span>
+                </Tip>
+                <span className="stat-value accent">{calc.geoLR ? calc.geoLR.toFixed(2) : '—'} : 1</span>
               </div>
-            )}
+
+              {linkageId && (
+                <div className="stat-row">
+                  <Tip text="Because the leverage ratio isn't constant through travel, the LR at your sag point differs from the simple travel÷stroke average. This adjusted value is used for the spring rate calculation.">
+                    <span className="stat-label stat-label-tip">LR at sag ({Math.round(sagPct * 100)}%)</span>
+                  </Tip>
+                  <span className="stat-value" style={{ color: activePreset?.color }}>
+                    {calc.effectiveLR ? calc.effectiveLR.toFixed(2) : '—'} : 1
+                    <span className="stat-modifier">{calc.linkageMod > 1 ? '+' : ''}{Math.round((calc.linkageMod - 1) * 100)}%</span>
+                  </span>
+                </div>
+              )}
+
+              <div className="stat-row">
+                <Tip text="The actual force the rear shock must support. Formula: rider weight × rear bias. This is what the spring must be stiff enough to hold at your target sag point.">
+                  <span className="stat-label stat-label-tip">Rear Load</span>
+                </Tip>
+                <span className="stat-value">
+                  {Math.round(calc.rearForceN / G)} kg
+                  <span style={{ color: 'var(--text-dim)' }}> · {Math.round(calc.rearForceN)} N</span>
+                </span>
+              </div>
+
+              <div className="rate-formula-note">
+                k = rider × bias × LR / (sag% × stroke)
+              </div>
+            </div>
+
+            {/* Right: big rate numbers */}
+            <div className="results-rate">
+              <div className="big-rate-row">
+                <span className="big-rate-num" style={{ color: zone.color }}>{calc.nmm ? calc.nmm.toFixed(1) : '—'}</span>
+                <span className="big-rate-unit">N/mm</span>
+              </div>
+              <div className="big-rate-row">
+                <span className="big-rate-num" style={{ color: zone.color }}>{calc.lbin ? Math.round(calc.lbin) : '—'}</span>
+                <span className="big-rate-unit">lb/in</span>
+              </div>
+              <div className="big-rate-zone" style={{ color: zone.color }}>{zone.label} setup</div>
+              {calc.lbin && (
+                <div className="rate-nearest">
+                  Nearest stock: <strong>{Math.round(calc.lbin / 25) * 25} lb/in</strong>
+                  <InfoIcon text="Spring rates are sold in increments of 25 lb/in (or 50 N/mm). Round to nearest available. If between sizes, go stiffer for heavier/aggressive riding, softer for lighter/mellow riding." width={240} />
+                </div>
+              )}
+            </div>
           </div>
 
           {/* ── Linkage Selector (inline) ── */}

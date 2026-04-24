@@ -190,11 +190,7 @@
 .explainer-def { font-size: 11px; color: var(--text-dim); line-height: 1.6; }
 
 /* ── Big Rate Display ── */
-.big-rate-display {
-  margin-top: 18px; padding: 16px;
-  background: var(--bg3); border: 1px solid var(--border); border-radius: 4px;
-}
-.big-rate-row { display: flex; align-items: baseline; gap: 8px; line-height: 1.2; }
+.big-rate-row { display: flex; align-items: baseline; gap: 8px; line-height: 1.2; justify-content: flex-end; }
 .big-rate-num { font-size: 36px; font-weight: 600; letter-spacing: -0.02em; }
 .big-rate-unit { font-size: 13px; color: var(--text-dim); margin-bottom: 8px; }
 .big-rate-zone { font-size: 11px; margin-top: 8px; letter-spacing: 0.06em; }
@@ -375,6 +371,18 @@
 .bias-btn-active .bias-btn-pct { color: var(--accent); }
 
 .bias-slider-row { display: flex; align-items: center; gap: 8px; }
+
+/* ── Results top: stats left, rate right ── */
+.results-top {
+  display: flex; gap: 16px; align-items: flex-start;
+  padding-bottom: 14px; border-bottom: 1px solid var(--border); margin-bottom: 14px;
+}
+.results-stats { flex: 1; min-width: 0; }
+.results-rate {
+  text-align: right; flex-shrink: 0;
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 4px; padding: 10px 14px;
+}
 
 /* ── Rate formula + nearest ── */
 .rate-formula-note {
