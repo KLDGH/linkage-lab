@@ -234,7 +234,26 @@ export default function SpringCalculator() {
           <div className="card-title">Results</div>
 
           <div className="results-top">
-            {/* Left: secondary stats */}
+            {/* Left: big rate numbers */}
+            <div className="results-rate">
+              <div className="big-rate-row">
+                <span className="big-rate-num" style={{ color: zone.color }}>{calc.lbin ? Math.round(calc.lbin) : '—'}</span>
+                <span className="big-rate-unit">lb/in</span>
+              </div>
+              <div className="big-rate-row">
+                <span className="big-rate-num" style={{ color: zone.color }}>{calc.nmm ? calc.nmm.toFixed(1) : '—'}</span>
+                <span className="big-rate-unit">N/mm</span>
+              </div>
+              <div className="big-rate-zone" style={{ color: zone.color }}>{zone.label} setup</div>
+              {calc.lbin && (
+                <div className="rate-nearest">
+                  Nearest stock: <strong>{Math.round(calc.lbin / 25) * 25} lb/in</strong>
+                  <InfoIcon text="Spring rates are sold in increments of 25 lb/in (or 50 N/mm). Round to nearest available. If between sizes, go stiffer for heavier/aggressive riding, softer for lighter/mellow riding." width={240} />
+                </div>
+              )}
+            </div>
+
+            {/* Right: secondary stats */}
             <div className="results-stats">
               <div className="stat-row">
                 <Tip text="Leverage Ratio = wheel travel ÷ shock stroke. Tells you how much the shock amplifies force: a 3:1 LR means the spring must push 3× harder than your weight at the rear wheel.">
@@ -268,25 +287,6 @@ export default function SpringCalculator() {
               <div className="rate-formula-note">
                 k = rider × bias × LR / (sag% × stroke)
               </div>
-            </div>
-
-            {/* Right: big rate numbers */}
-            <div className="results-rate">
-              <div className="big-rate-row">
-                <span className="big-rate-num" style={{ color: zone.color }}>{calc.nmm ? calc.nmm.toFixed(1) : '—'}</span>
-                <span className="big-rate-unit">N/mm</span>
-              </div>
-              <div className="big-rate-row">
-                <span className="big-rate-num" style={{ color: zone.color }}>{calc.lbin ? Math.round(calc.lbin) : '—'}</span>
-                <span className="big-rate-unit">lb/in</span>
-              </div>
-              <div className="big-rate-zone" style={{ color: zone.color }}>{zone.label} setup</div>
-              {calc.lbin && (
-                <div className="rate-nearest">
-                  Nearest stock: <strong>{Math.round(calc.lbin / 25) * 25} lb/in</strong>
-                  <InfoIcon text="Spring rates are sold in increments of 25 lb/in (or 50 N/mm). Round to nearest available. If between sizes, go stiffer for heavier/aggressive riding, softer for lighter/mellow riding." width={240} />
-                </div>
-              )}
             </div>
           </div>
 
