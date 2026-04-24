@@ -229,7 +229,7 @@ export default function SpringCalculator() {
           </div>
         </div>
 
-        {/* ── Results ── */}
+        {/* ── Results + Linkage ── */}
         <div className="calc-outputs card">
           <div className="card-title">Results</div>
 
@@ -283,18 +283,16 @@ export default function SpringCalculator() {
               </div>
             )}
           </div>
-        </div>
 
-        {/* ── Linkage Selector ── */}
-        <div className="linkage-selector card chart-wide">
-          <div className="linkage-selector-header">
-            <span className="card-title" style={{ marginBottom: 0 }}>
-              Suspension Linkage Type
+          {/* ── Linkage Selector (inline) ── */}
+          <div className="linkage-selector-header" style={{ marginTop: 18 }}>
+            <span className="card-title" style={{ marginBottom: 0, paddingBottom: 0, borderBottom: 'none', fontSize: '10px' }}>
+              Suspension Linkage
               <InfoIcon text={`Different linkage designs produce different leverage ratio curves through travel — not a flat line.\n\nThis changes how much LR you have at the sag point vs the average, which affects required spring rate by up to ±15%.\n\nSelect your bike's linkage to apply the correction.`} width={280} />
             </span>
             {linkageId && (
               <span className="linkage-active-note" style={{ color: activePreset?.color }}>
-                {activePreset?.name} · {calc.linkageMod > 1 ? '+' : ''}{Math.round((calc.linkageMod - 1) * 100)}% LR at sag
+                {activePreset?.name} · {calc.linkageMod > 1 ? '+' : ''}{Math.round((calc.linkageMod - 1) * 100)}% LR
               </span>
             )}
           </div>

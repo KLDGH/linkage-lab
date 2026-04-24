@@ -247,6 +247,10 @@
     #f0b429 75%, #f0b429 100%
   );
 }
+/* In the compact layout the zone track above already shows colors — plain track here */
+.sag-compact .sag-slider {
+  background: var(--bg3); margin: 6px 0 2px;
+}
 .sag-slider::-webkit-slider-thumb {
   -webkit-appearance: none; appearance: none;
   width: 18px; height: 18px; border-radius: 50%;
@@ -274,7 +278,7 @@
 .card-title-note { font-weight: 400; color: var(--text-dim); margin-left: 6px; text-transform: none; letter-spacing: 0; font-size: 10px; }
 
 .linkage-pills {
-  display: flex; flex-wrap: wrap; gap: 8px;
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px;
 }
 .linkage-pill {
   display: flex; align-items: center; gap: 10px;
