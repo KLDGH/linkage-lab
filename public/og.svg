@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#f6f4f1"/>
+
+  <!-- Subtle grid lines -->
+  <g stroke="#dedad4" stroke-width="1" opacity="0.6">
+    <line x1="0" y1="157" x2="1200" y2="157"/>
+    <line x1="0" y1="315" x2="1200" y2="315"/>
+    <line x1="0" y1="473" x2="1200" y2="473"/>
+    <line x1="300" y1="0" x2="300" y2="630"/>
+    <line x1="600" y1="0" x2="600" y2="630"/>
+    <line x1="900" y1="0" x2="900" y2="630"/>
+  </g>
+
+  <!-- Decorative leverage curve (faint) -->
+  <polyline
+    points="80,520 180,490 280,455 380,418 480,385 580,360 680,345 780,340 880,348 980,370 1100,410"
+    fill="none" stroke="#dedad4" stroke-width="2.5" opacity="0.8"/>
+
+  <!-- Active curve (green) -->
+  <polyline
+    points="80,480 180,450 280,415 380,372 480,335 580,305 680,288 780,282 880,292 980,318 1100,362"
+    fill="none" stroke="#1e6e46" stroke-width="3" opacity="0.5"/>
+
+  <!-- Sag reference line -->
+  <line x1="390" y1="80" x2="390" y2="560" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="8 5" opacity="0.4"/>
+  <text x="396" y="110" font-family="monospace" font-size="13" fill="#3b82f6" opacity="0.6">28% sag</text>
+
+  <!-- Main logo text -->
+  <text x="80" y="290" font-family="'Courier New', monospace" font-size="72" font-weight="700" letter-spacing="6" fill="#1c1814">SOLITAIRE</text>
+  <text x="80" y="370" font-family="'Courier New', monospace" font-size="72" font-weight="700" letter-spacing="6" fill="#1e6e46">DYNAMICS</text>
+
+  <!-- Tagline -->
+  <text x="82" y="430" font-family="'Courier New', monospace" font-size="20" letter-spacing="2" fill="#6b635c">Spring rates · Leverage curves · Linkage analysis</text>
+
+  <!-- Bottom bar -->
+  <rect x="0" y="580" width="1200" height="50" fill="#1c1814"/>
+  <text x="80" y="612" font-family="'Courier New', monospace" font-size="16" letter-spacing="3" fill="#f6f4f1" opacity="0.7">LINKAGELAB</text>
+  <text x="220" y="612" font-family="'Courier New', monospace" font-size="13" letter-spacing="1" fill="#1e6e46" opacity="0.8">BETA</text>
+  <text x="980" y="612" font-family="'Courier New', monospace" font-size="14" letter-spacing="1" fill="#6b635c">solitairedynamics.com</text>
+</svg>

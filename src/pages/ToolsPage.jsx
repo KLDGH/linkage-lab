@@ -1,5 +1,6 @@
 import SpringCalculator from '../components/SpringCalculator'
 import LeverageCurve from '../components/LeverageCurve'
+import LinkageAnalysis from '../components/LinkageAnalysis'
 
 export default function ToolsPage() {
   return (
@@ -12,6 +13,9 @@ export default function ToolsPage() {
         <nav className="tab-nav">
           <a href="#spring" className="tab-link">01 · Spring Calculator</a>
           <a href="#leverage" className="tab-link">02 · Leverage Curves</a>
+          <a href="#analysis" className="tab-link tab-link-alpha">
+            03 · Linkage Analysis <span className="tab-alpha-badge">α</span>
+          </a>
         </nav>
       </div>
 
@@ -20,6 +24,9 @@ export default function ToolsPage() {
       </div>
       <div id="leverage">
         <LeverageCurve />
+      </div>
+      <div id="analysis">
+        <LinkageAnalysis />
       </div>
     </>
   )
