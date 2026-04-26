@@ -7,7 +7,7 @@ export default function ToolsPage() {
       <div className="tools-header">
         <div className="tools-header-left">
           <span className="tools-logo">LINKAGE<span className="logo-accent">LAB</span></span>
-          <span className="subtitle">spring rate calculator · leverage kinematics</span>
+          <span className="subtitle">spring rate tool · leverage kinematics</span>
         </div>
         <div className="tools-header-right">
           <span className="header-badge">BETA</span>

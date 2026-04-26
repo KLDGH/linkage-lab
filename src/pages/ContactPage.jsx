@@ -47,7 +47,7 @@ export default function ContactPage() {
             <h3 className="contact-info-title">Before you email</h3>
             <p className="contact-info-body">
               If you&apos;re asking about spring rate or setup, try the{' '}
-              <a href="/" className="contact-link">LinkageLab calculator</a>{' '}
+              <a href="/" className="contact-link">LinkageLab</a>{' '}
               first — it covers most common questions about spring rate and
               linkage correction.
             </p>

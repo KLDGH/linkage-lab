@@ -29,7 +29,7 @@ export default function AboutPage() {
             riders on the wrong spring — or worse, being told &quot;just run 30%
             sag&quot; as if that number means the same thing on a DW-Link bike and
             a CBF. It doesn&apos;t. The leverage ratio at sag is what matters, and
-            that varies a lot by linkage design. The calculator is free, public,
+            that varies a lot by linkage design. The tool is free, public,
             and open source. Use it. If the math sends you down a rabbit hole,
             that&apos;s the point.
           </p>
@@ -53,7 +53,7 @@ export default function AboutPage() {
             </div>
             <div className="about-stat">
               <span className="about-stat-val">Open source</span>
-              <span className="about-stat-label">LinkageLab calculator</span>
+              <span className="about-stat-label">LinkageLab — free tool</span>
             </div>
           </div>
         </div>
