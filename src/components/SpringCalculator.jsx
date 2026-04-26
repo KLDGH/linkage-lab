@@ -24,12 +24,22 @@ const SAG_ZONES = [
   { id: 'dh',     label: 'DH',     min: 32, max: 40, color: '#f0b429' },
 ]
 
-const BIAS_PRESETS = [
-  { label: 'XC',     pct: 55, tip: 'Weight-forward position, hands on bars, more upright' },
-  { label: 'Trail',  pct: 62, tip: 'Neutral position, typical trail riding seated' },
-  { label: 'Enduro', pct: 68, tip: 'Slack geometry, seated or attack position, weight back' },
-  { label: 'DH',     pct: 75, tip: 'Full race tuck, very rearward, hip over rear axle' },
+const BIAS_MIN = 45
+const BIAS_MAX = 80
+
+const BIAS_ZONES = [
+  { id: 'xc',     label: 'XC',     min: 45, max: 58, color: '#8b5cf6' },
+  { id: 'trail',  label: 'Trail',  min: 58, max: 65, color: '#3b82f6' },
+  { id: 'enduro', label: 'Enduro', min: 65, max: 71, color: '#00c97a' },
+  { id: 'dh',     label: 'DH',     min: 71, max: 80, color: '#f0b429' },
 ]
+
+function getBiasZone(pct) {
+  if (pct < 58) return BIAS_ZONES[0]
+  if (pct < 65) return BIAS_ZONES[1]
+  if (pct < 71) return BIAS_ZONES[2]
+  return BIAS_ZONES[3]
+}
 
 function getSagZone(pct) {
   const p = pct * 100
@@ -108,6 +118,7 @@ export default function SpringCalculator() {
   }, [vals, sagPct, linkageId])
 
   const zone = getSagZone(sagPct)
+  const biasZone = getBiasZone(vals.rearPct)
   const activePreset = LINKAGE_PRESETS.find((p) => p.id === linkageId)
 
   return (
@@ -206,26 +217,35 @@ export default function SpringCalculator() {
             Rear Weight Bias
             <InfoIcon text={`How much of your body weight loads the rear wheel. Depends on riding position and bike geometry.\n\nMost calculators (Fox, TF Tuned) assume 60-65% implicitly. Slack enduro bikes push this to 68-75% because the geometry shifts your mass rearward.`} width={280} />
           </div>
-          <div className="bias-presets">
-            {BIAS_PRESETS.map((b) => (
-              <Tip key={b.label} text={b.tip}>
-                <button
-                  className={`bias-btn ${vals.rearPct === b.pct ? 'bias-btn-active' : ''}`}
-                  onClick={() => set('rearPct')(b.pct)}
-                >
-                  {b.label}<br /><span className="bias-btn-pct">{b.pct}%</span>
-                </button>
-              </Tip>
-            ))}
-          </div>
-          <div className="bias-slider-row">
+          <div className="sag-compact">
+            <div className="sag-compact-top">
+              <span className="sag-compact-val" style={{ color: biasZone.color }}>{vals.rearPct}%</span>
+              <span className="sag-compact-zone" style={{ color: biasZone.color }}>{biasZone.label}</span>
+            </div>
+            <div className="sag-track-wrap">
+              {BIAS_ZONES.map((z) => (
+                <div key={z.id} className="sag-seg" style={{
+                  left: `${(z.min - BIAS_MIN) / (BIAS_MAX - BIAS_MIN) * 100}%`,
+                  width: `${(z.max - z.min) / (BIAS_MAX - BIAS_MIN) * 100}%`,
+                  background: z.color, opacity: biasZone.id === z.id ? 0.4 : 0.13,
+                }} />
+              ))}
+            </div>
             <input
-              type="range" min={45} max={80} step={1}
+              type="range" min={BIAS_MIN} max={BIAS_MAX} step={1}
               value={vals.rearPct}
               onChange={(e) => set('rearPct')(parseInt(e.target.value))}
-              className="slider"
+              className="sag-slider" style={{ '--sag-color': biasZone.color }}
             />
-            <span className="input-unit" style={{ minWidth: 36 }}>{vals.rearPct}%</span>
+            <div className="sag-zone-labels">
+              {BIAS_ZONES.map((z) => (
+                <span key={z.id} style={{
+                  left: `${(z.min - BIAS_MIN) / (BIAS_MAX - BIAS_MIN) * 100}%`,
+                  color: biasZone.id === z.id ? z.color : 'var(--text-dim)',
+                  fontWeight: biasZone.id === z.id ? 600 : 400,
+                }}>{z.label}</span>
+              ))}
+            </div>
           </div>
         </div>
 
