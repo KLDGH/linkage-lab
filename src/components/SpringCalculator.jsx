@@ -36,6 +36,34 @@ const BIAS_ZONES = [
 
 const CHART_PRESET_IDS = ['dwlink', 'horst', 'vpp', 'cbf']
 
+// Rider-facing suspension type labels mapped to underlying LR presets
+const SUSPENSION_TYPES = [
+  {
+    presetId: 'dwlink',
+    label: 'DW / High Support Linkage',
+    sublabel: 'DW-Link, Maestro, firm midstroke, higher sag support',
+    tip: 'Higher leverage ratio at sag than average. The shock must work harder to reach sag, so the calc adjusts your spring rate softer to compensate. Firm, supportive midstroke feel.',
+  },
+  {
+    presetId: 'vpp',
+    label: 'VPP / Progressive Linkage',
+    sublabel: 'VPP-style bikes, balanced support with progressive feel',
+    tip: 'Slightly lower LR at sag that rises through the stroke. The progressive ramp gives bottom-out resistance without needing a stiffer spring. Balanced, poppy feel.',
+  },
+  {
+    presetId: 'horst',
+    label: 'Horst / Four-Bar (Neutral Baseline)',
+    sublabel: 'FSR / Horst-link bikes, most common modern baseline behavior',
+    tip: 'Near-neutral leverage ratio at sag. The most common rear suspension category and the implicit baseline most published spring rate charts are built around. If unsure, this or Unknown are your safest options.',
+  },
+  {
+    presetId: 'cbf',
+    label: 'High Pivot / Rearward Kinematics',
+    sublabel: 'High pivot or rearward axle path, traction-focused, more rearward wheel path',
+    tip: 'Bikes with an idler pulley and rearward axle path (e.g. Norco Optic, Forbidden Druid). Lower effective LR at sag — the calc adjusts stiffer. Prioritises traction over efficiency.',
+  },
+]
+
 // Numerically integrate shock displacement through the stroke using variable LR,
 // then compute force at wheel at each travel point.
 function computeForceCurve(preset, geoLR, wheelTravel, sagPct, shockStroke, riderKg, rearFrac, N = 20) {
@@ -130,23 +158,41 @@ export default function SpringCalculator() {
     const presetPts = chartPresets.map(p => computeForceCurve(p, geoLR, vals.wheelTravel, sagPct, vals.shockStroke, riderKg, rearFrac))
 
     const curveData = Array.from({ length: 21 }, (_, i) => {
+      const t = i / 20
       const obj = {
-        sagMm: Math.round(vals.wheelTravel * i / 20),
+        sagMm: Math.round(vals.wheelTravel * t),
         targetLine: Math.round(rearForceN),
         force_neutral: neutralPts[i],
+        lr_neutral: geoLR ? parseFloat(geoLR.toFixed(3)) : null,
       }
-      chartPresets.forEach((p, j) => { obj[`force_${p.id}`] = presetPts[j][i] })
+      chartPresets.forEach((p, j) => {
+        obj[`force_${p.id}`] = presetPts[j][i]
+        obj[`lr_${p.id}`] = geoLR
+          ? parseFloat((geoLR * getLrAtTravel(p, t) / averageLr(p)).toFixed(3))
+          : null
+      })
       return obj
     })
 
-    const maxForce = Math.max(
-      rearForceN,
-      ...neutralPts,
-      ...presetPts.flat(),
-    )
+    const maxForce = Math.max(rearForceN, ...neutralPts, ...presetPts.flat())
     const yDomain = [0, Math.ceil(maxForce * 1.1 / 200) * 200]
 
-    return { riderKg, geoLR, effectiveLR, linkageMod, rearForceN, nmm, lbin, curveData, yDomain }
+    // Clamped domain — keeps the sag crossing point prominent
+    const yDomainClamped = [
+      Math.max(0, Math.floor(rearForceN * 0.55 / 100) * 100),
+      Math.ceil(rearForceN * 1.55 / 100) * 100,
+    ]
+
+    // LR curve domain
+    const allLRs = curveData.flatMap(d =>
+      [d.lr_neutral, ...chartPresets.map(p => d[`lr_${p.id}`])].filter(Boolean)
+    )
+    const lrDomain = [
+      parseFloat((Math.min(...allLRs) * 0.96).toFixed(2)),
+      parseFloat((Math.max(...allLRs) * 1.04).toFixed(2)),
+    ]
+
+    return { riderKg, geoLR, effectiveLR, linkageMod, rearForceN, nmm, lbin, curveData, yDomain, yDomainClamped, lrDomain }
   }, [vals, sagPct, linkageId])
 
   const zone = getSagZone(sagPct)
@@ -321,15 +367,15 @@ export default function SpringCalculator() {
             </div>
           </div>
 
-          {/* ── Linkage Selector (inline) ── */}
+          {/* ── Suspension Type Selector ── */}
           <div className="linkage-selector-header" style={{ marginTop: 18 }}>
             <span className="card-title" style={{ marginBottom: 0, paddingBottom: 0, borderBottom: 'none', fontSize: '10px' }}>
-              LR at Sag — Linkage Correction
-              <InfoIcon text={`What matters for spring rate is the leverage ratio at your sag point — not the average LR.\n\nLinkage names below are examples only. Two bikes with the same linkage name can have different curves. Select the category that best matches your bike's behavior.`} width={290} />
+              Suspension Type
+              <InfoIcon text={`Select the category closest to your bike's rear linkage. These are kinematic tendencies — two bikes with the same name can behave differently. When in doubt, leave it on Unknown.`} width={280} />
             </span>
             {linkageId && (
               <span className="linkage-active-note" style={{ color: activePreset?.color }}>
-                {calc.linkageMod > 1 ? '+' : ''}{Math.round((calc.linkageMod - 1) * 100)}% LR at {Math.round(sagPct * 100)}% sag
+                {calc.linkageMod > 1 ? '+' : ''}{Math.round((calc.linkageMod - 1) * 100)}% spring adjustment
               </span>
             )}
           </div>
@@ -340,17 +386,19 @@ export default function SpringCalculator() {
             >
               <span className="lp-dot" style={{ background: 'var(--text-dim)' }} />
               <div className="lp-text">
-                <span className="lp-name" style={{ color: !linkageId ? 'var(--text-bright)' : undefined }}>Neutral / Unknown</span>
-                <span className="lp-feel">average LR at sag ≈ travel ÷ stroke</span>
+                <span className="lp-name" style={{ color: !linkageId ? 'var(--text-bright)' : undefined }}>Unknown / Not sure</span>
+                <span className="lp-sub">use geometry alone — safe default</span>
               </div>
               <span className="lp-mod" style={{ color: 'var(--text-dim)' }}>0%</span>
             </div>
-            {LINKAGE_PRESETS.filter(p => ['dwlink', 'horst', 'vpp', 'cbf'].includes(p.id)).map((p) => {
+            {SUSPENSION_TYPES.map((type) => {
+              const p = LINKAGE_PRESETS.find(pr => pr.id === type.presetId)
+              if (!p) return null
               const mod = getLrAtTravel(p, sagPct) / averageLr(p)
               const modStr = (mod > 1 ? '+' : '') + Math.round((mod - 1) * 100) + '%'
               const active = linkageId === p.id
               return (
-                <Tip key={p.id} text={p.description} width={260}>
+                <Tip key={p.id} text={type.tip} width={280}>
                   <div
                     className={`linkage-pill ${active ? 'linkage-pill-active' : ''}`}
                     style={active ? { borderColor: p.color } : {}}
@@ -358,9 +406,8 @@ export default function SpringCalculator() {
                   >
                     <span className="lp-dot" style={{ background: p.color }} />
                     <div className="lp-text">
-                      <span className="lp-name" style={{ color: active ? p.color : undefined }}>{p.name}</span>
-                      <span className="lp-feel">{p.feel}</span>
-                      <span className="lp-sub">{p.examples}</span>
+                      <span className="lp-name" style={{ color: active ? p.color : undefined }}>{type.label}</span>
+                      <span className="lp-sub">{type.sublabel}</span>
                     </div>
                     <span className="lp-mod" style={{ color: mod > 1.01 ? '#f0b429' : mod < 0.99 ? '#00c97a' : 'var(--text-dim)' }}>
                       {modStr}
@@ -371,73 +418,97 @@ export default function SpringCalculator() {
             })}
           </div>
 
-          {/* ── Force Chart (inside outputs card) ── */}
+          {/* ── Dual charts ── */}
           <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
-            <div className="card-title" style={{ marginBottom: 12 }}>
-              Spring Force at Wheel · Wheel Travel
-              <InfoIcon text={`The colored line shows the force your spring provides at the rear wheel as it compresses. The yellow dashed line is your actual rear load (rider weight × bias).\n\nWhere they cross is your sag point. A correct spring rate makes them cross exactly at your target sag %.`} width={280} />
-            </div>
-            <ResponsiveContainer width="100%" height={320}>
-              <LineChart data={calc.curveData} margin={{ top: 8, right: 20, left: 0, bottom: 16 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e3048" />
-                <XAxis
-                  dataKey="sagMm"
-                  tickFormatter={(v) => `${v}mm`}
-                  tick={{ fill: '#8896aa', fontSize: 11, fontFamily: 'JetBrains Mono' }}
-                  label={{ value: 'Wheel travel (mm)', position: 'insideBottom', offset: -8, fill: '#8896aa', fontSize: 11 }}
-                />
-                <YAxis
-                  yAxisId="left"
-                  domain={calc.yDomain}
-                  tick={{ fill: '#8896aa', fontSize: 11, fontFamily: 'JetBrains Mono' }}
-                  tickFormatter={(v) => v === 0 ? '0' : `${Math.round(v * 0.2248)}lb / ${v}N`}
-                  width={96}
-                />
-                <RechartTooltip
-                  contentStyle={{ background: '#111e30', border: '1px solid #1e3048', fontFamily: 'JetBrains Mono', fontSize: 12 }}
-                  formatter={(v, name, props) => {
-                    const activeKey = linkageId ? `force_${linkageId}` : 'force_neutral'
-                    if (props.dataKey !== activeKey && props.dataKey !== 'targetLine') return [null, null]
-                    return [
-                      `${v} N · ${Math.round(v * 0.2248)} lb`,
-                      props.dataKey === 'targetLine' ? 'Rear load' : 'Spring force at wheel',
-                    ]
-                  }}
-                  labelFormatter={(l) => `Wheel travel: ${l} mm`}
-                />
-                <ReferenceLine
-                  yAxisId="left"
-                  x={Math.round(vals.wheelTravel * sagPct)}
-                  stroke={zone.color} strokeDasharray="4 2"
-                  label={{ value: `${Math.round(sagPct * 100)}% sag`, fill: zone.color, fontSize: 10, position: 'top' }}
-                />
-                <Line
-                  yAxisId="left"
-                  type="monotone" dataKey="force_neutral" dot={false} name="Neutral"
-                  stroke={!linkageId ? zone.color : '#888'}
-                  strokeWidth={!linkageId ? 2.5 : 1}
-                  strokeOpacity={!linkageId ? 1 : 0.2}
-                />
-                {LINKAGE_PRESETS.filter(p => CHART_PRESET_IDS.includes(p.id)).map(p => {
-                  const active = linkageId === p.id
-                  return (
-                    <Line
-                      yAxisId="left"
-                      key={p.id} type="monotone" dataKey={`force_${p.id}`} dot={false} name={p.name}
-                      stroke={p.color}
-                      strokeWidth={active ? 2.5 : 1}
-                      strokeOpacity={active ? 1 : 0.18}
+            <div className="chart-pair">
+
+              {/* A — Spring force (clamped Y so crossing is prominent) */}
+              <div>
+                <div className="chart-pair-title">
+                  Spring Force at Wheel
+                  <InfoIcon text={`Force your spring delivers at the rear wheel as it compresses. Yellow dashed line = your rear load.\n\nWhere they cross is your sag point. Y-axis is zoomed to that region so you can see clearly whether you're over or under-sprung.`} width={260} />
+                </div>
+                <ResponsiveContainer width="100%" height={220}>
+                  <LineChart data={calc.curveData} margin={{ top: 8, right: 12, left: 0, bottom: 16 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e8e4de" />
+                    <XAxis dataKey="sagMm" tickFormatter={(v) => `${v}mm`}
+                      tick={{ fill: '#8896aa', fontSize: 10, fontFamily: 'JetBrains Mono' }} />
+                    <YAxis domain={calc.yDomainClamped}
+                      tickFormatter={(v) => `${Math.round(v * 0.2248)}lb`}
+                      tick={{ fill: '#8896aa', fontSize: 10, fontFamily: 'JetBrains Mono' }}
+                      width={44} />
+                    <RechartTooltip
+                      contentStyle={{ background: '#1c1814', border: '1px solid #3a3530', fontFamily: 'JetBrains Mono', fontSize: 11 }}
+                      formatter={(v, name, props) => {
+                        const activeKey = linkageId ? `force_${linkageId}` : 'force_neutral'
+                        if (props.dataKey !== activeKey && props.dataKey !== 'targetLine') return [null, null]
+                        return [`${Math.round(v * 0.2248)} lb · ${v} N`, props.dataKey === 'targetLine' ? 'Rear load' : 'Spring force']
+                      }}
+                      labelFormatter={(l) => `${l}mm travel`}
                     />
-                  )
-                })}
-                <Line yAxisId="left" type="monotone" dataKey="targetLine" stroke="#f0b429" strokeWidth={1.5} strokeDasharray="5 3" dot={false} name="targetLine" />
-              </LineChart>
-            </ResponsiveContainer>
-            <div className="chart-legend">
-              <span><span className="dot" style={{ background: !linkageId ? zone.color : activePreset?.color || zone.color }} />
-                {activePreset ? activePreset.name : 'Neutral'} spring force at wheel
-              </span>
-              <span><span className="dot" style={{ background: '#f0b429' }} /> Your rear load — lines cross at target sag</span>
+                    <ReferenceLine x={Math.round(vals.wheelTravel * sagPct)}
+                      stroke={zone.color} strokeDasharray="4 2"
+                      label={{ value: `${Math.round(sagPct * 100)}% sag`, fill: zone.color, fontSize: 9, position: 'top' }} />
+                    <Line type="monotone" dataKey="force_neutral" dot={false}
+                      stroke={!linkageId ? zone.color : '#bbb'} strokeWidth={!linkageId ? 2 : 1} strokeOpacity={!linkageId ? 1 : 0.2} />
+                    {LINKAGE_PRESETS.filter(p => CHART_PRESET_IDS.includes(p.id)).map(p => {
+                      const active = linkageId === p.id
+                      return <Line key={p.id} type="monotone" dataKey={`force_${p.id}`} dot={false}
+                        stroke={p.color} strokeWidth={active ? 2 : 1} strokeOpacity={active ? 1 : 0.15} />
+                    })}
+                    <Line type="monotone" dataKey="targetLine" stroke="#f0b429" strokeWidth={1.5} strokeDasharray="5 3" dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+                <div className="chart-legend">
+                  <span><span className="dot" style={{ background: !linkageId ? zone.color : activePreset?.color || zone.color }} /> Spring force</span>
+                  <span><span className="dot" style={{ background: '#f0b429' }} /> Rear load</span>
+                </div>
+              </div>
+
+              {/* B — Your bike's LR curve */}
+              <div>
+                <div className="chart-pair-title">
+                  Your Leverage Curve · wheel/shock
+                  <InfoIcon text={`LR = wheel travel ÷ shock travel at each point in the stroke.\n\nCounter-intuitive but important: a FALLING curve means PROGRESSIVE (rising-rate) suspension — the shock gets harder to compress deeper in travel, resisting bottom-out. A RISING curve is digressive (less support deeper in travel). Flat = linear.\n\nThe "Unknown" baseline is flat because without linkage shape data we can only use your overall geometry ratio.`} width={290} />
+                </div>
+                <ResponsiveContainer width="100%" height={220}>
+                  <LineChart data={calc.curveData} margin={{ top: 8, right: 12, left: 0, bottom: 16 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e8e4de" />
+                    <XAxis dataKey="sagMm" tickFormatter={(v) => `${v}mm`}
+                      tick={{ fill: '#8896aa', fontSize: 10, fontFamily: 'JetBrains Mono' }} />
+                    <YAxis domain={calc.lrDomain}
+                      tickFormatter={(v) => `${v.toFixed(1)}`}
+                      tick={{ fill: '#8896aa', fontSize: 10, fontFamily: 'JetBrains Mono' }}
+                      label={{ value: 'LR', position: 'insideTopLeft', offset: 4, fill: '#8896aa', fontSize: 10 }}
+                      width={36} />
+                    <RechartTooltip
+                      contentStyle={{ background: '#1c1814', border: '1px solid #3a3530', fontFamily: 'JetBrains Mono', fontSize: 11 }}
+                      formatter={(v, name, props) => {
+                        const activeKey = linkageId ? `lr_${linkageId}` : 'lr_neutral'
+                        if (props.dataKey !== activeKey) return [null, null]
+                        return [`${v.toFixed(2)}:1`, 'Leverage ratio']
+                      }}
+                      labelFormatter={(l) => `${l}mm travel`}
+                    />
+                    <ReferenceLine x={Math.round(vals.wheelTravel * sagPct)}
+                      stroke={zone.color} strokeDasharray="4 2"
+                      label={{ value: `${Math.round(sagPct * 100)}% sag`, fill: zone.color, fontSize: 9, position: 'top' }} />
+                    <Line type="monotone" dataKey="lr_neutral" dot={false}
+                      stroke={!linkageId ? zone.color : '#bbb'} strokeWidth={!linkageId ? 2 : 1} strokeOpacity={!linkageId ? 1 : 0.2} />
+                    {LINKAGE_PRESETS.filter(p => CHART_PRESET_IDS.includes(p.id)).map(p => {
+                      const active = linkageId === p.id
+                      return <Line key={p.id} type="monotone" dataKey={`lr_${p.id}`} dot={false}
+                        stroke={p.color} strokeWidth={active ? 2 : 1} strokeOpacity={active ? 1 : 0.15} />
+                    })}
+                  </LineChart>
+                </ResponsiveContainer>
+                <div className="chart-legend">
+                  <span><span className="dot" style={{ background: !linkageId ? zone.color : activePreset?.color || zone.color }} />
+                    {activePreset ? activePreset.name : 'Your geometry'} LR
+                  </span>
+                </div>
+              </div>
+
             </div>
           </div>
 
