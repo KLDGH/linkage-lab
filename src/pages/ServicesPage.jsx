@@ -5,7 +5,7 @@ export default function ServicesPage() {
         <p className="page-eyebrow">What we do</p>
         <h1 className="page-title">Services</h1>
         <p className="page-lead">
-          Boutique suspension service out of Los Angeles. Every job starts with
+          Independent suspension service out of Los Angeles. Every job starts with
           a spring rate and setup review — the numbers matter as much as fresh
           seals and oil.
         </p>

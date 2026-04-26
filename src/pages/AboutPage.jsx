@@ -9,7 +9,7 @@ export default function AboutPage() {
       <div className="about-body">
         <div className="about-main">
           <p className="about-graf about-graf-lead">
-            Solitaire Dynamics is a boutique MTB suspension service based in
+            Solitaire Dynamics is an independent MTB suspension service based in
             Los Angeles. We started in Jackson Hole — where the trails are
             rough, the seasons are short, and your suspension setup actually
             matters — and brought that mindset south.
@@ -33,10 +33,9 @@ export default function AboutPage() {
           </p>
 
           <p className="about-graf">
-            We built <strong>LinkageLab</strong> because we got tired of seeing
-            riders on the wrong spring — or worse, being told &quot;just run 30%
-            sag&quot; as if that number means the same thing on a DW-Link bike and
-            a CBF. It doesn&apos;t. The tool is free and public. Use it.
+            We built <strong>LinkageLab</strong> because we saw too many riders
+            on the wrong spring or being told &quot;just run 30% sag&quot;. The tool
+            is free and improving all the time.
           </p>
 
           <p className="about-graf">
