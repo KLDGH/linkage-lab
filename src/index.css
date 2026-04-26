@@ -40,3 +40,8 @@ body {
   margin: 0 auto;
   padding: 44px 48px 100px;
 }
+
+@media (max-width: 600px) {
+  body { font-size: 15px; }
+  #root { padding: 24px 18px 64px; }
+}

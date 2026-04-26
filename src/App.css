@@ -462,19 +462,6 @@
   font-size: 12px; font-weight: 500; letter-spacing: 0.04em;
 }
 
-/* ── Responsive ── */
-@media (max-width: 900px) {
-  .calc-grid { grid-template-columns: 1fr; }
-  .chart-wide { grid-column: 1; }
-  .leverage-layout { grid-template-columns: 1fr; }
-  .explainer-grid { grid-template-columns: 1fr; }
-  .bias-presets { grid-template-columns: repeat(2, 1fr); }
-  .site-header { flex-direction: column; align-items: flex-start; gap: 16px; }
-  .about-body { grid-template-columns: 1fr; }
-  .contact-layout { grid-template-columns: 1fr; }
-  .service-grid { grid-template-columns: 1fr; }
-}
-
 /* ── Page shell ── */
 .page { }
 .page-hero {
@@ -679,4 +666,62 @@
 }
 .contact-info-body {
   font-size: 14px; color: var(--text-dim); line-height: 1.75;
+}
+
+/* ── Responsive: tablet ── */
+@media (max-width: 900px) {
+  .calc-grid { grid-template-columns: 1fr; }
+  .chart-wide { grid-column: 1; }
+  .leverage-layout { grid-template-columns: 1fr; }
+  .explainer-grid { grid-template-columns: 1fr; }
+  .bias-presets { grid-template-columns: repeat(2, 1fr); }
+  .site-header { flex-direction: column; align-items: flex-start; gap: 16px; }
+  .about-body { grid-template-columns: 1fr; }
+  .contact-layout { grid-template-columns: 1fr; }
+  .service-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Responsive: mobile ── */
+@media (max-width: 600px) {
+  /* Nav */
+  .site-header { padding-bottom: 18px; margin-bottom: 28px; gap: 14px; }
+  .site-logo { font-size: 16px; }
+  .site-nav { gap: 2px; }
+  .site-nav-link { font-size: 12px; padding: 6px 10px; }
+
+  /* Tools sub-header */
+  .tools-header { margin-bottom: 20px; padding-bottom: 18px; }
+  .tools-logo { font-size: 18px; }
+  .tab-nav { gap: 6px; margin-bottom: 24px; }
+  .tab-link { font-size: 12px; padding: 7px 12px; }
+
+  /* Calculator */
+  .big-rate-num { font-size: 32px; }
+  .section-title { font-size: 17px; }
+  .calc-input { font-size: 14px; }
+  .linkage-pills { grid-template-columns: 1fr; }
+
+  /* Pages */
+  .page-title { font-size: 26px; }
+  .page-lead { font-size: 14px; }
+  .page-hero { margin-bottom: 32px; padding-bottom: 24px; }
+
+  /* Services */
+  .service-grid { grid-template-columns: 1fr; gap: 12px; }
+  .service-card { padding: 18px; }
+  .service-mailin { padding: 20px; }
+  .service-cta { flex-direction: column; align-items: flex-start; gap: 14px; }
+
+  /* About */
+  .about-graf { font-size: 14px; }
+  .about-graf-lead { font-size: 15px; }
+  .about-sidebar { flex-direction: row; flex-wrap: wrap; gap: 0; }
+  .about-sidebar-block { width: 50%; padding: 12px 0; }
+
+  /* Contact */
+  .contact-method { padding: 16px 18px; }
+  .contact-method-val { font-size: 15px; }
+
+  /* Footer */
+  .footer { flex-direction: column; align-items: flex-start; gap: 8px; }
 }
