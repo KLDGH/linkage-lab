@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { springRateNmm, leverageRatio, nmmToLbin, G } from '../lib/springMath'
 import { LINKAGE_PRESETS, getLrAtTravel, averageLr } from '../lib/linkagePresets'
 import {
@@ -113,6 +113,11 @@ function InfoIcon({ text, width }) {
 }
 
 function InputField({ label, value, onChange, unit, min, max, step, tip }) {
+  const [local, setLocal] = useState(String(value))
+
+  // Sync when parent changes externally (e.g. unit toggle kg↔lbs)
+  useEffect(() => { setLocal(String(value)) }, [value])
+
   return (
     <div className="input-group">
       <label className="input-label">
@@ -122,8 +127,16 @@ function InputField({ label, value, onChange, unit, min, max, step, tip }) {
       <div className="input-row">
         <input
           type="number" className="calc-input"
-          value={value} min={min} max={max} step={step}
-          onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+          value={local} min={min} max={max} step={step}
+          onChange={(e) => {
+            const raw = e.target.value
+            setLocal(raw)
+            const num = parseFloat(raw)
+            if (!isNaN(num)) onChange(num)
+          }}
+          onBlur={() => {
+            if (isNaN(parseFloat(local))) setLocal(String(value))
+          }}
         />
         <span className="input-unit">{unit}</span>
       </div>
