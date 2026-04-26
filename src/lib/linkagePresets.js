@@ -98,12 +98,12 @@ export const LINKAGE_PRESETS = [
     ],
   },
   {
-    id: 'cbf',
+    id: 'highpivot',
     name: 'High LR at sag, progressive ending',
     feel: 'supple off the top, ramps up hard at end-stroke',
     examples: 'high-pivot designs (Forbidden Druid, Norco Optic, Deviate Claymore)',
     color: '#fb923c',
-    description: 'Steeply progressive with a "progressive ending" shape — LR starts high and falls gradually through the first half of travel, then drops sharply toward bottom-out. High-pivot and rearward-axle-path bikes use this curve to stay active and supple early while building strong end-stroke resistance. Reference: Deviate Claymore (start 2.97 → sag 2.85 → end 2.30, 22.6% progression).',
+    description: 'Steeply progressive with a "progressive ending" shape — LR starts high and falls gradually through the first half of travel, then drops sharply toward bottom-out. High-pivot and rearward-axle-path bikes use this curve to stay active and supple early while building strong end-stroke resistance. Validated against two measured bikes: Deviate Claymore (2.97→2.30, 22.6% progression) and Forbidden Druid V2 (2.95→2.25 per Linkage Design analysis) — our preset matches both within 2%.',
     points: [
       { t: 0.00, lr: 2.97 },
       { t: 0.10, lr: 2.93 },

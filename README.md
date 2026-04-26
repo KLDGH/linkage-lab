@@ -43,6 +43,45 @@ F_spring = F_wheel × LR
 k × (sag% × stroke) = riderKg × G × rearBias × LR
 ```
 
+### Real-world example: Forbidden Druid V2
+
+| Input | Value |
+|---|---|
+| Rider + gear | 185 lb (83.9 kg) |
+| Wheel travel | 130 mm |
+| Shock | 185×50mm (50mm stroke) |
+| Target sag | 30% |
+| Rear weight bias | 65% |
+| Suspension type | High Pivot |
+
+Measured LR data from [Linkage Design](https://linkagedesign.blogspot.com/2023/04/forbidden-druid-v2-2023.html): **2.95:1 → 2.25:1** across travel. Our high-pivot preset (2.97→2.30) matches within 2%.
+
+**Step 1 — Geometric LR:**
+```
+geoLR = 130 / 50 = 2.60:1
+```
+
+Note: the travel-average of the measured Druid curve (2.95→2.25) is also ≈ 2.60 — confirming the preset and geometry are consistent.
+
+**Step 2 — Linkage correction at sag:**
+
+The high-pivot preset has LR = 2.83 at 30% travel vs an average of 2.67 across full travel. The sag point sits higher on the curve than average — the spring must work harder to reach it.
+
+```
+linkageMod = LR_at_sag / LR_average = 2.83 / 2.67 = +6%
+effectiveLR = 2.60 × 1.06 = 2.76:1
+```
+
+**Step 3 — Spring rate:**
+```
+k = (83.9 × 9.81 × 0.65 × 2.76) / (0.30 × 50)
+  = 1,476 N / 15 mm
+  = 98.4 N/mm  ≈  562 lb/in
+```
+**Nearest stock spring: 550 lb/in**
+
+Without the high-pivot correction the formula gives 529 lb/in (nearest stock 525 lb/in) — the linkage correction is the difference between a 525 and a 550 spring for this rider.
+
 ### Leverage Ratio
 
 ```
@@ -67,14 +106,16 @@ The force chart integrates LR through travel to compute actual spring force at e
 
 Six archetypes with curve shapes based on published kinematic data:
 
-| Linkage | Character | LR at sag | Examples |
+Adjustment % shown at 30% sag — the typical operating point for a coil enduro setup.
+
+| Linkage | Character | Adj. at 30% sag | Examples |
 |---|---|---|---|
-| Horst / Four-Bar | Moderately high LR at sag, slight fall | High | Specialized FSR, many Horst-link designs |
-| VPP | Slightly low LR at sag, balanced | Slightly low | Santa Cruz, Intense |
-| DW-Link / Maestro | Very high LR at sag, strongly progressive | Very high | Ibis, Pivot, Evil |
-| Single Pivot | Linear / flat rate | Average | Evil Delta, Commencal (some), older full-sus |
-| Flex Stay | Mildly falling, nearly linear | Slightly high | Yeti SB, Rocky Mountain Instinct |
-| High Pivot | High LR at sag, steep progressive ending | High | Forbidden Druid, Norco Optic, Deviate Claymore |
+| Horst / Four-Bar | Moderately high LR at sag, slight fall | **+3%** | Specialized FSR, many Horst-link designs |
+| VPP | Slightly low LR at sag, U-shaped curve | **−4%** | Santa Cruz, Intense |
+| DW-Link / Maestro | Very high LR at sag, strongly progressive | **+11%** | Ibis, Pivot, Evil |
+| Single Pivot | Linear / flat rate | **0%** | Evil Delta, Commencal (some), older full-sus |
+| Flex Stay | Mildly falling, nearly linear | **+3%** | Yeti SB, Rocky Mountain Instinct |
+| High Pivot | High LR at sag, steep progressive ending | **+6%** | Forbidden Druid, Norco Optic, Deviate Claymore |
 
 High-pivot curve based on Deviate Claymore measured data: start 2.97 → sag 2.85 → end 2.30, 22.6% progression. Curves are representative archetypes — real bikes vary.
 

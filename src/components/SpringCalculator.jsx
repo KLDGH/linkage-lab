@@ -33,7 +33,7 @@ const BIAS_ZONES = [
   { id: 'dh',     label: 'DH',     min: 71, max: 80, color: '#f0b429' },
 ]
 
-const CHART_PRESET_IDS = ['dwlink', 'horst', 'vpp', 'cbf']
+const CHART_PRESET_IDS = ['dwlink', 'horst', 'vpp', 'highpivot']
 
 // Rider-facing suspension type labels mapped to underlying LR presets
 const SUSPENSION_TYPES = [
@@ -56,7 +56,7 @@ const SUSPENSION_TYPES = [
     tip: 'Near-neutral leverage ratio at sag. The most common rear suspension category and the implicit baseline most published spring rate charts are built around. If unsure, this or Unknown are your safest options.',
   },
   {
-    presetId: 'cbf',
+    presetId: 'highpivot',
     label: 'High Pivot / Rearward Kinematics',
     sublabel: 'High pivot with idler pulley — supple off the top, steeply progressive at end-stroke',
     tip: 'Bikes with an idler pulley and rearward axle path (e.g. Forbidden Druid, Norco Optic, Deviate Claymore). LR starts high and falls steeply — very progressive. Curve based on Deviate Claymore data (2.97 → 2.30, 22.6% progression).',
@@ -544,7 +544,7 @@ export default function SpringCalculator() {
                 </ResponsiveContainer>
                 <div className="chart-legend">
                   <span><span className="dot" style={{ background: !linkageId ? zone.color : activePreset?.color || zone.color }} />
-                    {activePreset ? activePreset.name : 'Your geometry'} LR
+                    {activePreset ? activePreset.name : 'Your geometry'}
                   </span>
                 </div>
               </div>
