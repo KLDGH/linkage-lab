@@ -59,8 +59,8 @@ const SUSPENSION_TYPES = [
   {
     presetId: 'cbf',
     label: 'High Pivot / Rearward Kinematics',
-    sublabel: 'High pivot or rearward axle path, traction-focused, more rearward wheel path',
-    tip: 'Bikes with an idler pulley and rearward axle path (e.g. Norco Optic, Forbidden Druid). Lower effective LR at sag — the calc adjusts stiffer. Prioritises traction over efficiency.',
+    sublabel: 'High pivot with idler pulley — supple off the top, steeply progressive at end-stroke',
+    tip: 'Bikes with an idler pulley and rearward axle path (e.g. Forbidden Druid, Norco Optic, Deviate Claymore). LR starts high and falls steeply — very progressive. Curve based on Deviate Claymore data (2.97 → 2.30, 22.6% progression).',
   },
 ]
 

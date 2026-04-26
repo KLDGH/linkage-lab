@@ -5,8 +5,7 @@ export default function AboutPage() {
         <p className="page-eyebrow">Who's behind this</p>
         <h1 className="page-title">About</h1>
         <p className="page-lead">
-          Suspension service and tool building out of Los Angeles —
-          two things that keep asking the same questions from different angles.
+          Suspension service and tool building out of Los Angeles.
         </p>
       </div>
 
@@ -20,9 +19,9 @@ export default function AboutPage() {
           </p>
 
           <p className="about-graf">
-            I got into this properly in Jackson Hole, where the trails are
-            rough, the seasons are short, and a bad setup costs you riding days
-            you can't get back. Good suspension work turned out to mean
+            I got into this properly in Jackson Hole. Short seasons mean a bad
+            setup costs you riding days you can't get back — and good suspension
+            work turned out to mean
             more than fresh seals. Spring rate, sag, shim stack, valve
             configuration, fluid viscosity — every variable compounds. A damper
             rebuilt to factory spec still won't perform if the valving is
