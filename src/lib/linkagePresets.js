@@ -5,10 +5,11 @@
 export const LINKAGE_PRESETS = [
   {
     id: 'horst',
-    name: 'Horst Link (4-bar)',
-    examples: 'Trek, Specialized FSR, GT Sensor',
+    name: 'Moderately high LR at sag',
+    feel: 'slightly higher leverage at sag, mild progression',
+    examples: 'many Horst/FSR and flex-stay designs',
     color: '#38bdf8',
-    description: 'Slightly falling ratio — progressive spring feel, moderate anti-squat',
+    description: 'Slightly falling rate — LR is above average at sag, drops gently through stroke. Slightly stiffer spring than geometric LR alone. Covers Horst-link / FSR 4-bar and most flex-stay designs.',
     points: [
       { t: 0.00, lr: 3.20 },
       { t: 0.10, lr: 3.15 },
@@ -25,10 +26,11 @@ export const LINKAGE_PRESETS = [
   },
   {
     id: 'vpp',
-    name: 'VPP (Virtual Pivot Point)',
-    examples: 'Santa Cruz, Intense',
-    color: '#fb923c',
-    description: 'Falling then rising — mid-stroke support, bump compliance at end stroke',
+    name: 'Slightly low LR at sag',
+    feel: 'balanced, mild progression',
+    examples: 'many VPP-style bikes (Santa Cruz, Intense)',
+    color: '#2dd4bf',
+    description: 'Falling then rising — LR is slightly below average at sag. Slightly softer spring than geometric LR alone. VPP and dual-link designs. Not all bikes with this linkage name behave the same.',
     points: [
       { t: 0.00, lr: 3.30 },
       { t: 0.10, lr: 3.15 },
@@ -45,10 +47,11 @@ export const LINKAGE_PRESETS = [
   },
   {
     id: 'dwlink',
-    name: 'DW-Link',
-    examples: 'Ibis, Pivot, Evil',
-    color: '#d97706',
-    description: 'Strongly progressive — ramps up through stroke, excellent small-bump sensitivity',
+    name: 'Very high LR at sag',
+    feel: 'early-stroke active, noticeably stiffer spring needed',
+    examples: 'many DW-Link and Maestro bikes',
+    color: '#facc15',
+    description: 'Steeply falling rate — LR is well above average at sag, drops sharply through stroke. Noticeably stiffer spring than geometric LR alone. Not all DW-Link or Maestro bikes are identical — this is a representative curve.',
     points: [
       { t: 0.00, lr: 3.50 },
       { t: 0.10, lr: 3.38 },
@@ -65,10 +68,11 @@ export const LINKAGE_PRESETS = [
   },
   {
     id: 'singlepivot',
-    name: 'Single Pivot',
-    examples: 'Many hardtails, older designs',
+    name: 'Linear / Flat Rate',
+    feel: 'consistent feel, no progressive ramp',
+    examples: 'Evil Delta, Commencal (some), older full-sus',
     color: '#f87171',
-    description: 'Constant ratio — linear spring behavior, no progressive feel',
+    description: 'Flat / linear rate — LR stays constant through travel. LR at sag equals the average, same as geometric travel÷stroke. Shown here for curve comparison only — use Neutral/Unknown in the calculator.',
     points: [
       { t: 0.00, lr: 3.00 },
       { t: 0.25, lr: 3.00 },
@@ -79,10 +83,11 @@ export const LINKAGE_PRESETS = [
   },
   {
     id: 'flexstay',
-    name: 'Flex Stay / UDH',
+    name: 'Mildly Falling (Flex Stay)',
+    feel: 'nearly linear, low friction',
     examples: 'Yeti SB, Rocky Mountain Instinct',
     color: '#e879f9',
-    description: 'Mildly falling — simple, low friction, slightly progressive',
+    description: 'Mildly falling rate — LR slightly above average at sag, nearly constant. Similar to Moderately High but smaller correction. Shown here for curve comparison — in the calculator use Moderately High LR at sag.',
     points: [
       { t: 0.00, lr: 3.10 },
       { t: 0.20, lr: 3.05 },
@@ -90,6 +95,27 @@ export const LINKAGE_PRESETS = [
       { t: 0.60, lr: 2.90 },
       { t: 0.80, lr: 2.82 },
       { t: 1.00, lr: 2.74 },
+    ],
+  },
+  {
+    id: 'cbf',
+    name: 'Low LR at sag',
+    feel: 'progressive, more support deeper in travel',
+    examples: 'rising-rate designs (Canfield, Revel)',
+    color: '#fb923c',
+    description: 'Rising rate — LR increases through stroke, opposite of most designs. LR at sag is well below average, so softer spring than geometric LR alone. CBF and similar rising-rate linkages.',
+    points: [
+      { t: 0.00, lr: 2.70 },
+      { t: 0.10, lr: 2.75 },
+      { t: 0.20, lr: 2.82 },
+      { t: 0.30, lr: 2.90 },
+      { t: 0.40, lr: 2.99 },
+      { t: 0.50, lr: 3.08 },
+      { t: 0.60, lr: 3.16 },
+      { t: 0.70, lr: 3.23 },
+      { t: 0.80, lr: 3.29 },
+      { t: 0.90, lr: 3.34 },
+      { t: 1.00, lr: 3.38 },
     ],
   },
 ]

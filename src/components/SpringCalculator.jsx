@@ -293,12 +293,12 @@ export default function SpringCalculator() {
           {/* ── Linkage Selector (inline) ── */}
           <div className="linkage-selector-header" style={{ marginTop: 18 }}>
             <span className="card-title" style={{ marginBottom: 0, paddingBottom: 0, borderBottom: 'none', fontSize: '10px' }}>
-              Suspension Linkage
-              <InfoIcon text={`Different linkage designs produce different leverage ratio curves through travel — not a flat line.\n\nThis changes how much LR you have at the sag point vs the average, which affects required spring rate by up to ±15%.\n\nSelect your bike's linkage to apply the correction.`} width={280} />
+              LR at Sag — Linkage Correction
+              <InfoIcon text={`What matters for spring rate is the leverage ratio at your sag point — not the average LR.\n\nLinkage names below are examples only. Two bikes with the same linkage name can have different curves. Select the category that best matches your bike's behavior.`} width={290} />
             </span>
             {linkageId && (
               <span className="linkage-active-note" style={{ color: activePreset?.color }}>
-                {activePreset?.name} · {calc.linkageMod > 1 ? '+' : ''}{Math.round((calc.linkageMod - 1) * 100)}% LR
+                {calc.linkageMod > 1 ? '+' : ''}{Math.round((calc.linkageMod - 1) * 100)}% LR at {Math.round(sagPct * 100)}% sag
               </span>
             )}
           </div>
@@ -309,17 +309,17 @@ export default function SpringCalculator() {
             >
               <span className="lp-dot" style={{ background: 'var(--text-dim)' }} />
               <div className="lp-text">
-                <span className="lp-name" style={{ color: !linkageId ? 'var(--text-bright)' : undefined }}>Geometric only</span>
-                <span className="lp-sub">travel ÷ stroke, flat LR</span>
+                <span className="lp-name" style={{ color: !linkageId ? 'var(--text-bright)' : undefined }}>Neutral / Unknown</span>
+                <span className="lp-feel">average LR at sag ≈ travel ÷ stroke</span>
               </div>
-              <span className="lp-mod" style={{ color: 'var(--text-dim)' }}>baseline</span>
+              <span className="lp-mod" style={{ color: 'var(--text-dim)' }}>0%</span>
             </div>
-            {LINKAGE_PRESETS.map((p) => {
+            {LINKAGE_PRESETS.filter(p => ['dwlink', 'horst', 'vpp', 'cbf'].includes(p.id)).map((p) => {
               const mod = getLrAtTravel(p, sagPct) / averageLr(p)
-              const modStr = (mod > 1 ? '+' : '') + Math.round((mod - 1) * 100) + '% LR'
+              const modStr = (mod > 1 ? '+' : '') + Math.round((mod - 1) * 100) + '% at sag'
               const active = linkageId === p.id
               return (
-                <Tip key={p.id} text={p.description} width={240}>
+                <Tip key={p.id} text={p.description} width={260}>
                   <div
                     className={`linkage-pill ${active ? 'linkage-pill-active' : ''}`}
                     style={active ? { borderColor: p.color } : {}}
@@ -328,6 +328,7 @@ export default function SpringCalculator() {
                     <span className="lp-dot" style={{ background: p.color }} />
                     <div className="lp-text">
                       <span className="lp-name" style={{ color: active ? p.color : undefined }}>{p.name}</span>
+                      <span className="lp-feel">{p.feel}</span>
                       <span className="lp-sub">{p.examples}</span>
                     </div>
                     <span className="lp-mod" style={{ color: mod > 1.01 ? '#f0b429' : mod < 0.99 ? '#00c97a' : 'var(--text-dim)' }}>
