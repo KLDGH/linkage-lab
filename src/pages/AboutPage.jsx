@@ -16,28 +16,34 @@ export default function AboutPage() {
           </p>
 
           <p className="about-graf">
-            Most suspension work in the industry is mechanical: pull it apart,
-            replace seals, put it back together. That&apos;s necessary, but it&apos;s
-            not the full picture. If your spring rate is wrong for your weight
-            and bike geometry, fresh oil won&apos;t fix it. If your sag is set for
-            a different discipline, no amount of clicker adjustment will make
-            it feel right.
+            Good suspension service goes deeper than fresh seals and oil.
+            Spring rate, sag, shim stack tuning, valve configuration, fluid
+            viscosity — every variable compounds. A damper rebuilt to factory
+            spec still won&apos;t perform if the shim stack is stacked for a
+            different rider weight or riding style. We look at the whole
+            system, not just the part in the stand.
+          </p>
+
+          <p className="about-graf">
+            Most suspension work in the industry stops at mechanical:
+            pull it apart, replace seals, put it back together. That&apos;s
+            necessary. But if your spring rate is wrong for your weight
+            and geometry, or your valving is tuned for someone 40 lbs
+            lighter, fresh oil won&apos;t fix how it feels on trail.
           </p>
 
           <p className="about-graf">
             We built <strong>LinkageLab</strong> because we got tired of seeing
             riders on the wrong spring — or worse, being told &quot;just run 30%
             sag&quot; as if that number means the same thing on a DW-Link bike and
-            a CBF. It doesn&apos;t. The leverage ratio at sag is what matters, and
-            that varies a lot by linkage design. The tool is free, public,
-            and open source. Use it. If the math sends you down a rabbit hole,
-            that&apos;s the point.
+            a CBF. It doesn&apos;t. The tool is free and public. Use it.
           </p>
 
           <p className="about-graf">
             When you send us your suspension, we run the numbers first. Every
             rebuild comes with a setup sheet. If you&apos;re on the wrong spring
-            we&apos;ll tell you before we start the wrench work.
+            or your valving needs attention, we&apos;ll tell you before we
+            start the wrench work.
           </p>
 
           <div className="about-divider" />
@@ -80,17 +86,6 @@ export default function AboutPage() {
               className="about-sidebar-link"
             >
               @solitairedynamics
-            </a>
-          </div>
-          <div className="about-sidebar-block">
-            <span className="about-sidebar-label">GitHub</span>
-            <a
-              href="https://github.com/KLDGH/linkage-lab"
-              target="_blank"
-              rel="noreferrer"
-              className="about-sidebar-link"
-            >
-              KLDGH / linkage-lab
             </a>
           </div>
         </div>
