@@ -467,7 +467,7 @@ export default function SpringCalculator() {
                   <InfoIcon text={`Force your spring delivers at the rear wheel as it compresses. Yellow dashed line = your rear load.\n\nWhere they cross is your sag point. Y-axis is zoomed to that region so you can see clearly whether you're over or under-sprung.`} width={260} />
                 </div>
                 <ResponsiveContainer width="100%" height={220}>
-                  <LineChart data={calc.curveData} margin={{ top: 8, right: 12, left: 0, bottom: 16 }}>
+                  <LineChart data={calc.curveData} margin={{ top: 22, right: 12, left: 0, bottom: 16 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e8e4de" />
                     <XAxis dataKey="sagMm" tickFormatter={(v) => `${v}mm`}
                       tick={{ fill: '#8896aa', fontSize: 10, fontFamily: 'JetBrains Mono' }} />
@@ -486,7 +486,7 @@ export default function SpringCalculator() {
                     />
                     <ReferenceLine x={Math.round(vals.wheelTravel * sagPct)}
                       stroke={zone.color} strokeDasharray="4 2"
-                      label={{ value: `${Math.round(sagPct * 100)}% sag`, fill: zone.color, fontSize: 9, position: 'top' }} />
+                      label={{ value: `${Math.round(sagPct * 100)}% sag`, fill: zone.color, fontSize: 9, position: 'insideTopRight' }} />
                     <Line type="monotone" dataKey="force_neutral" dot={false}
                       stroke={!linkageId ? zone.color : '#bbb'} strokeWidth={!linkageId ? 2 : 1} strokeOpacity={!linkageId ? 1 : 0.2} />
                     {LINKAGE_PRESETS.filter(p => CHART_PRESET_IDS.includes(p.id)).map(p => {
@@ -510,7 +510,7 @@ export default function SpringCalculator() {
                   <InfoIcon text={`LR = wheel travel ÷ shock travel at each point in the stroke.\n\nCounter-intuitive but important: a FALLING curve means PROGRESSIVE (rising-rate) suspension — the shock gets harder to compress deeper in travel, resisting bottom-out. A RISING curve is digressive (less support deeper in travel). Flat = linear.\n\nThe "Unknown" baseline is flat because without linkage shape data we can only use your overall geometry ratio.`} width={290} />
                 </div>
                 <ResponsiveContainer width="100%" height={220}>
-                  <LineChart data={calc.curveData} margin={{ top: 8, right: 12, left: 0, bottom: 16 }}>
+                  <LineChart data={calc.curveData} margin={{ top: 22, right: 12, left: 0, bottom: 16 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e8e4de" />
                     <XAxis dataKey="sagMm" tickFormatter={(v) => `${v}mm`}
                       tick={{ fill: '#8896aa', fontSize: 10, fontFamily: 'JetBrains Mono' }} />
@@ -530,24 +530,7 @@ export default function SpringCalculator() {
                     />
                     <ReferenceLine x={Math.round(vals.wheelTravel * sagPct)}
                       stroke={zone.color} strokeDasharray="4 2"
-                      label={{ value: `${Math.round(sagPct * 100)}% sag`, fill: zone.color, fontSize: 9, position: 'top' }} />
-                    {calc.effectiveLR && (linkageId || customProg !== null) && (
-                      <ReferenceDot
-                        x={Math.round(vals.wheelTravel * sagPct)}
-                        y={parseFloat(calc.effectiveLR.toFixed(3))}
-                        r={4}
-                        fill={activePreset?.color || zone.color}
-                        stroke="#1c1814"
-                        strokeWidth={1.5}
-                        label={{
-                          value: `${calc.effectiveLR.toFixed(2)}:1`,
-                          position: 'right',
-                          fill: activePreset?.color || zone.color,
-                          fontSize: 10,
-                          fontFamily: 'JetBrains Mono',
-                        }}
-                      />
-                    )}
+                      label={{ value: `${Math.round(sagPct * 100)}% sag`, fill: zone.color, fontSize: 9, position: 'insideTopRight' }} />
                     <Line type="monotone" dataKey="lr_neutral" dot={false}
                       stroke={!linkageId ? zone.color : '#bbb'} strokeWidth={!linkageId ? 2 : 1} strokeOpacity={!linkageId ? 1 : 0.2} />
                     {LINKAGE_PRESETS.filter(p => CHART_PRESET_IDS.includes(p.id)).map(p => {
