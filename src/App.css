@@ -38,38 +38,38 @@
   box-shadow: 0 1px 3px rgba(0,0,0,0.07);
 }
 
-/* ── Tools page sub-header ── */
-.tools-header {
+/* ── Tools bar (logo + tabs in one row) ── */
+.tools-bar {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 0 0 24px;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 16px;
   border-bottom: 1px solid var(--border);
-  margin-bottom: 28px;
+  margin-bottom: 32px;
 }
-.tools-header-left { display: flex; flex-direction: column; gap: 5px; }
-.tools-logo { font-size: 22px; font-weight: 600; letter-spacing: 0.12em; color: var(--text-bright); }
-.tools-header-right { display: flex; align-items: center; }
-.subtitle { font-size: 13px; color: var(--text-dim); letter-spacing: 0; font-style: italic; opacity: 0.7; }
+.tools-bar-left {
+  display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+}
+.tools-logo { font-size: 18px; font-weight: 600; letter-spacing: 0.12em; color: var(--text-bright); }
 .header-badge {
-  font-size: 11px; letter-spacing: 0.15em;
+  font-size: 10px; letter-spacing: 0.15em;
   background: var(--text-bright); border: 1px solid var(--text-bright);
-  color: var(--bg); padding: 4px 10px; border-radius: 3px;
+  color: var(--bg); padding: 3px 8px; border-radius: 3px;
 }
 
 /* ── Tab Nav ── */
 .tab-nav {
-  display: flex; gap: 8px; margin-bottom: 36px;
-  border-bottom: 1px solid var(--border); padding-bottom: 16px;
+  display: flex; gap: 6px;
 }
 .tab-link {
   color: var(--text-dim); text-decoration: none;
-  font-size: 13px; letter-spacing: 0.06em; font-weight: 500;
-  padding: 8px 20px; border-radius: 4px;
+  font-size: 12px; letter-spacing: 0.05em; font-weight: 500;
+  padding: 7px 16px; border-radius: 4px;
   border: 1px solid var(--border);
   background: var(--bg2);
   box-shadow: 0 1px 3px rgba(0,0,0,0.07);
-  transition: all 0.15s;
+  transition: all 0.15s; white-space: nowrap;
 }
 .tab-link:hover {
   color: var(--text-bright);
@@ -702,11 +702,10 @@
   .site-nav { gap: 2px; }
   .site-nav-link { font-size: 12px; padding: 6px 10px; }
 
-  /* Tools sub-header */
-  .tools-header { margin-bottom: 20px; padding-bottom: 18px; }
-  .tools-logo { font-size: 18px; }
-  .tab-nav { gap: 6px; margin-bottom: 24px; }
-  .tab-link { font-size: 12px; padding: 7px 12px; }
+  /* Tools bar */
+  .tools-bar { flex-wrap: wrap; gap: 10px; margin-bottom: 24px; }
+  .tools-logo { font-size: 15px; }
+  .tab-link { font-size: 11px; padding: 6px 10px; }
 
   /* Calculator */
   .big-rate-num { font-size: 32px; }

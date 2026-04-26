@@ -267,7 +267,7 @@ export default function SpringCalculator() {
             {calc.lbin && (
               <div className="rate-nearest">
                 Nearest stock: <strong>{Math.round(calc.lbin / 25) * 25} lb/in</strong>
-                <InfoIcon text="Spring rates are sold in increments of 25 lb/in. Round to nearest available. Go stiffer for heavier/aggressive riding, softer for lighter/mellow." width={240} />
+                <InfoIcon text={"Spring rates are sold in 25 lb/in steps (Fox, RockShox) or 50 lb/in steps (Cane Creek).\n\nThe gap is bridgeable with preload — a few collar turns can shift your effective rate by 25–50 lb/in. That's why Cane Creek can sell in larger increments without leaving riders between springs.\n\nWhen in doubt, go to the next stiffer spring and back off with preload."} width={280} />
               </div>
             )}
             <div className="results-meta">
