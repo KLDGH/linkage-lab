@@ -166,7 +166,7 @@ export default function SpringCalculator() {
         <div className="calc-inputs card">
           <div className="card-title">Inputs</div>
 
-          {/* Rider weight */}
+          {/* ── Essential three ── */}
           <div className="input-group-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span>Rider Weight</span>
             <div className="unit-pill">
@@ -182,31 +182,23 @@ export default function SpringCalculator() {
             unit={wUnit} min={weightLbs ? 66 : 30} max={weightLbs ? 440 : 200} step={weightLbs ? 1 : 0.5}
           />
           <InputField
-            label="E-bike Motor / Battery"
-            tip="Extra mass from motor + battery. Only needed for e-bikes — adds directly to the spring load. 0 for regular bikes."
-            value={displayWeight(vals.ebonusKg)}
-            onChange={(v) => set('ebonusKg')(toKg(v))}
-            unit={wUnit} min={0} max={weightLbs ? 55 : 25} step={weightLbs ? 0.5 : 0.1}
-          />
-
-          {/* Suspension geometry */}
-          <div className="input-group-header">
-            Suspension Geometry
-            <InfoIcon text="These define your leverage ratio (LR = wheel travel ÷ shock stroke). LR tells you how much the shock moves per mm of wheel travel. Higher LR = shock moves less = stiffer spring needed." width={260} />
-          </div>
-          <InputField
             label="Wheel Travel"
             tip="Total rear wheel travel from full extension to full compression. Found in your bike's spec sheet."
             value={vals.wheelTravel} onChange={set('wheelTravel')} unit="mm" min={50} max={300} step={5}
           />
           <InputField
             label="Shock Stroke"
-            tip="How far the shock shaft travels. Usually printed on the shock body (e.g. '57.5mm'). Not the same as eye-to-eye length."
+            tip="How far the shock shaft travels. Usually printed on the shock body (e.g. '55mm'). Not the same as eye-to-eye length."
             value={vals.shockStroke} onChange={set('shockStroke')} unit="mm" min={20} max={120} step={0.5}
           />
 
+          {/* ── Tune divider ── */}
+          <div className="tune-divider">
+            <span>Refine</span>
+          </div>
+
           {/* Sag — compact inline */}
-          <div className="input-group-header">
+          <div className="input-group-header tune-header">
             Target Sag
             <InfoIcon text="Sag is how much your suspension compresses under your weight alone, expressed as % of wheel travel. More sag = softer feel but less travel reserve. Coil shocks are typically run at 25-33%." width={260} />
           </div>
@@ -244,8 +236,20 @@ export default function SpringCalculator() {
             </div>
           </div>
 
+          {/* E-bike bonus — in refine section */}
+          <div className="input-group-header tune-header">
+            E-bike Motor / Battery
+          </div>
+          <InputField
+            label="Motor + battery mass"
+            tip="Extra mass from motor + battery. Only needed for e-bikes — adds directly to the spring load. 0 for regular bikes."
+            value={displayWeight(vals.ebonusKg)}
+            onChange={(v) => set('ebonusKg')(toKg(v))}
+            unit={wUnit} min={0} max={weightLbs ? 55 : 25} step={weightLbs ? 0.5 : 0.1}
+          />
+
           {/* Rear weight bias */}
-          <div className="input-group-header">
+          <div className="input-group-header tune-header">
             Rear Weight Bias
             <InfoIcon text={`How much of your body weight loads the rear wheel. Depends on riding position and bike geometry.\n\nMost calculators (Fox, TF Tuned) assume 60-65% implicitly. Slack enduro bikes push this to 68-75% because the geometry shifts your mass rearward.`} width={280} />
           </div>

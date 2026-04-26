@@ -411,6 +411,21 @@
   transform: translateX(-50%); transition: color 0.2s;
 }
 
+/* ── Tune divider ── */
+.tune-divider {
+  display: flex; align-items: center; gap: 10px;
+  margin: 24px 0 4px; font-size: 10px; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--text-dim); opacity: 0.5;
+}
+.tune-divider::before, .tune-divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+}
+.tune-header {
+  color: var(--text-dim) !important;
+  font-size: 10px !important;
+  opacity: 0.75;
+}
+
 /* ── Bias presets ── */
 .bias-presets {
   display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
