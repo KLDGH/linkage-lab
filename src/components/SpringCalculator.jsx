@@ -399,7 +399,9 @@ export default function SpringCalculator() {
               <span className="results-meta-sep">·</span>
               <Tip text="Rider weight × rear bias = force the rear shock must support at sag.">
                 <span className="results-meta-tip">
-                  Rear load {Math.round(calc.rearForceN / G)} kg · {Math.round(calc.rearForceN)} N
+                  Rear load {weightLbs
+                    ? `${Math.round(calc.rearForceN / G * 2.20462)} lbs`
+                    : `${Math.round(calc.rearForceN / G)} kg`} · {Math.round(calc.rearForceN)} N
                 </span>
               </Tip>
             </div>
