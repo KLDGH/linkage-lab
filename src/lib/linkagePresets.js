@@ -5,6 +5,7 @@
 export const LINKAGE_PRESETS = [
   {
     id: 'horst',
+    prog: 17,
     name: 'Moderately high LR at sag',
     feel: 'slightly higher leverage at sag, mild progression',
     examples: 'many Horst/FSR and flex-stay designs',
@@ -26,6 +27,7 @@ export const LINKAGE_PRESETS = [
   },
   {
     id: 'vpp',
+    prog: null,
     name: 'Slightly low LR at sag',
     feel: 'balanced, mild progression',
     examples: 'many VPP-style bikes (Santa Cruz, Intense)',
@@ -47,6 +49,7 @@ export const LINKAGE_PRESETS = [
   },
   {
     id: 'dwlink',
+    prog: 38,
     name: 'Very high LR at sag',
     feel: 'early-stroke active, noticeably stiffer spring needed',
     examples: 'many DW-Link and Maestro bikes',
@@ -68,6 +71,7 @@ export const LINKAGE_PRESETS = [
   },
   {
     id: 'singlepivot',
+    prog: 0,
     name: 'Linear / Flat Rate',
     feel: 'consistent feel, no progressive ramp',
     examples: 'Evil Delta, Commencal (some), older full-sus',
@@ -83,6 +87,7 @@ export const LINKAGE_PRESETS = [
   },
   {
     id: 'flexstay',
+    prog: 12,
     name: 'Mildly Falling (Flex Stay)',
     feel: 'nearly linear, low friction',
     examples: 'Yeti SB, Rocky Mountain Instinct',
@@ -99,6 +104,7 @@ export const LINKAGE_PRESETS = [
   },
   {
     id: 'highpivot',
+    prog: 23,
     name: 'High LR at sag, progressive ending',
     feel: 'supple off the top, ramps up hard at end-stroke',
     examples: 'high-pivot designs (Forbidden Druid, Norco Optic, Deviate Claymore)',

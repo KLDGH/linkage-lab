@@ -341,16 +341,24 @@ export default function SpringCalculator() {
           {/* Progression override */}
           <div className="input-group-header tune-header" style={{ marginTop: 12 }}>
             Linkage Progression
-            <InfoIcon text={`End-to-end progression % — how much stiffer the suspension gets from top to bottom of travel.\n\nAuto-fills from your selected suspension type. Override if you know your bike's actual number (from Linkage Design, manufacturer data, or Cascade Components pages).\n\nSwitching suspension type resets this to the preset value.`} width={280} />
+            <InfoIcon text={`End-to-end progression % — how much stiffer the suspension gets from top to bottom of travel. Most trail bikes are 15–25%.\n\nThe reference value shown is typical for the selected suspension type. Override with your bike's actual number if you have it (from Linkage Design, Cascade Components, or manufacturer data). The override uses a linear curve model.`} width={290} />
           </div>
+          {selectedPreset && customProg === null && (
+            <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-dim)', marginBottom: 6, paddingLeft: 2 }}>
+              {selectedPreset.prog !== null && selectedPreset.prog !== undefined
+                ? <>Typical for this type: <span style={{ color: activePreset?.color }}>{selectedPreset.prog}%</span> — override below if you know your bike's actual figure</>
+                : <>This type has an S-shaped curve — progression varies through travel, a single % doesn't apply</>
+              }
+            </div>
+          )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ flex: 1 }}>
               <InputField
-                label={customProg !== null ? 'Custom (linear model)' : 'Enter to override preset'}
+                label={customProg !== null ? 'Custom (linear model)' : 'Override (optional)'}
                 value={customProg !== null ? customProg : ''}
                 onChange={(v) => setCustomProg(Math.max(0, Math.min(50, v)))}
                 unit="%" min={0} max={50} step={1}
-                tip="Optional. Enter your bike's actual end-to-end progression % from linkage software or manufacturer data (e.g. Cascade Components product pages show this). Overrides the suspension type preset. Leave blank to use the preset."
+                tip="Optional. Enter your bike's actual end-to-end progression % from linkage software or manufacturer data. Overrides the suspension type preset with a linear curve model."
               />
             </div>
             {customProg !== null && (
@@ -411,7 +419,7 @@ export default function SpringCalculator() {
           <div className="linkage-selector-header" style={{ marginTop: 18 }}>
             <span className="card-title" style={{ marginBottom: 0, paddingBottom: 0, borderBottom: 'none', fontSize: '10px' }}>
               Suspension Type
-              <InfoIcon text={`Select the category closest to your bike's rear linkage. These are kinematic tendencies — two bikes with the same name can behave differently. When in doubt, leave it on Unknown.`} width={280} />
+              <InfoIcon text={`Select your bike's rear suspension type to apply a linkage correction. "Geometric only" uses raw travel ÷ stroke with no progression — the same assumption as Fox and MRP calculators. Selecting a type corrects for where the leverage ratio sits at your sag point vs the travel average.`} width={300} />
             </span>
             {linkageId && (
               <span className="linkage-active-note" style={{ color: activePreset?.color }}>
@@ -426,8 +434,8 @@ export default function SpringCalculator() {
             >
               <span className="lp-dot" style={{ background: 'var(--text-dim)' }} />
               <div className="lp-text">
-                <span className="lp-name" style={{ color: !linkageId ? 'var(--text-bright)' : undefined }}>Unknown / Not sure</span>
-                <span className="lp-sub">use geometry alone — safe default</span>
+                <span className="lp-name" style={{ color: !linkageId ? 'var(--text-bright)' : undefined }}>Geometric only (no correction)</span>
+                <span className="lp-sub">raw travel ÷ stroke, 0% progression assumed</span>
               </div>
               <span className="lp-mod" style={{ color: 'var(--text-dim)' }}>0%</span>
             </div>
