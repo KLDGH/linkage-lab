@@ -219,22 +219,32 @@
 
 /* ── Leverage Section ── */
 .leverage-layout {
-  display: grid; grid-template-columns: 280px 1fr; gap: 12px;
+  display: grid; grid-template-columns: 180px 1fr; gap: 12px;
 }
 
 .preset-list { display: flex; flex-direction: column; gap: 0; }
-.preset-item {
-  display: flex; align-items: flex-start; gap: 10px;
-  padding: 12px 8px; cursor: pointer; border-radius: 4px;
+
+/* Compact chip in sidebar */
+.preset-chip {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 8px; cursor: pointer; border-radius: 4px;
   border-bottom: 1px solid var(--border); transition: background 0.1s;
 }
-.preset-item:hover { background: var(--bg3); }
-.preset-on { opacity: 1; }
-.preset-off { opacity: 0.4; }
-.preset-dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 3px; flex-shrink: 0; }
-.preset-name { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
-.preset-examples { font-size: 11px; color: var(--text-dim); margin-bottom: 2px; }
-.preset-desc { font-size: 11px; color: var(--text-dim); line-height: 1.5; }
+.preset-chip:hover { background: var(--bg3); }
+.preset-chip-focused { background: var(--bg3); }
+.preset-chip-off { opacity: 0.5; }
+.preset-chip-name { font-size: 12px; font-weight: 500; }
+.preset-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+/* Description panel below chart */
+.preset-detail {
+  margin-top: 16px; padding: 14px 16px;
+  background: var(--bg3); border-radius: 4px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.preset-detail-name { font-size: 13px; font-weight: 600; }
+.preset-detail-examples { font-size: 11px; color: var(--text-dim); }
+.preset-detail-desc { font-size: 12px; color: var(--text-dim); line-height: 1.6; margin-top: 4px; }
 
 .lr-stats {
   display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px;

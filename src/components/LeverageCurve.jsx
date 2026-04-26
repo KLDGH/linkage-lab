@@ -1,14 +1,16 @@
 import { useState, useMemo } from 'react'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
-  ReferenceLine, ResponsiveContainer, Legend,
+  ReferenceLine, ResponsiveContainer,
 } from 'recharts'
 import { LINKAGE_PRESETS, getLrAtTravel, averageLr } from '../lib/linkagePresets'
 
 export default function LeverageCurve() {
   const [selected, setSelected] = useState(['horst', 'vpp', 'dwlink'])
+  const [focused, setFocused] = useState('horst')
 
   const toggle = (id) => {
+    setFocused(id)
     setSelected((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     )
@@ -26,6 +28,7 @@ export default function LeverageCurve() {
   }, [])
 
   const visiblePresets = LINKAGE_PRESETS.filter((p) => selected.includes(p.id))
+  const focusedPreset = LINKAGE_PRESETS.find((p) => p.id === focused)
 
   return (
     <section className="calc-section">
@@ -35,31 +38,34 @@ export default function LeverageCurve() {
       </div>
 
       <div className="leverage-layout">
+
+        {/* ── Compact preset list ── */}
         <div className="preset-list card">
           <div className="card-title">Linkage Types</div>
-          {LINKAGE_PRESETS.map((p) => (
-            <div
-              key={p.id}
-              className={`preset-item ${selected.includes(p.id) ? 'preset-on' : 'preset-off'}`}
-              onClick={() => toggle(p.id)}
-            >
-              <div className="preset-dot" style={{ background: p.color }} />
-              <div className="preset-info">
-                <div className="preset-name" style={{ color: selected.includes(p.id) ? p.color : '#8896aa' }}>
+          {LINKAGE_PRESETS.map((p) => {
+            const on = selected.includes(p.id)
+            const isFocused = focused === p.id
+            return (
+              <div
+                key={p.id}
+                className={`preset-chip ${on ? 'preset-chip-on' : 'preset-chip-off'} ${isFocused ? 'preset-chip-focused' : ''}`}
+                onClick={() => toggle(p.id)}
+              >
+                <span className="preset-dot" style={{ background: on ? p.color : 'var(--border)' }} />
+                <span className="preset-chip-name" style={{ color: on ? p.color : 'var(--text-dim)' }}>
                   {p.name}
-                </div>
-                <div className="preset-examples">{p.examples}</div>
-                <div className="preset-desc">{p.description}</div>
+                </span>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
 
+        {/* ── Chart + description ── */}
         <div className="leverage-chart card">
           <div className="card-title">Leverage Ratio vs. Wheel Travel</div>
           <ResponsiveContainer width="100%" height={320}>
-            <LineChart data={chartData} margin={{ top: 8, right: 24, left: 0, bottom: 24 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e3048" />
+            <LineChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 24 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e8e4de" />
               <XAxis
                 dataKey="travel"
                 tickFormatter={(v) => `${v}%`}
@@ -73,7 +79,7 @@ export default function LeverageCurve() {
                 width={36}
               />
               <Tooltip
-                contentStyle={{ background: '#111e30', border: '1px solid #1e3048', fontFamily: 'JetBrains Mono', fontSize: 12 }}
+                contentStyle={{ background: '#1c1814', border: '1px solid #3a3530', fontFamily: 'JetBrains Mono', fontSize: 12 }}
                 formatter={(v, name) => {
                   const p = LINKAGE_PRESETS.find((x) => x.id === name)
                   return [`${v} : 1`, p?.name || name]
@@ -86,7 +92,8 @@ export default function LeverageCurve() {
                   type="monotone"
                   dataKey={p.id}
                   stroke={p.color}
-                  strokeWidth={2}
+                  strokeWidth={focused === p.id ? 2.5 : 1.5}
+                  strokeOpacity={focused === p.id ? 1 : 0.4}
                   dot={false}
                   name={p.id}
                 />
@@ -95,6 +102,17 @@ export default function LeverageCurve() {
                 label={{ value: '28% sag', fill: '#3b82f6', fontSize: 9, position: 'top' }} />
             </LineChart>
           </ResponsiveContainer>
+
+          {/* ── Focused preset description ── */}
+          {focusedPreset && (
+            <div className="preset-detail" style={{ borderTop: `2px solid ${focusedPreset.color}` }}>
+              <div className="preset-detail-name" style={{ color: focusedPreset.color }}>
+                {focusedPreset.name}
+              </div>
+              <div className="preset-detail-examples">{focusedPreset.examples}</div>
+              <div className="preset-detail-desc">{focusedPreset.description}</div>
+            </div>
+          )}
 
           <div className="lr-stats">
             {visiblePresets.map((p) => (
