@@ -34,6 +34,28 @@ const BIAS_ZONES = [
   { id: 'dh',     label: 'DH',     min: 71, max: 80, color: '#f0b429' },
 ]
 
+const CHART_PRESET_IDS = ['dwlink', 'horst', 'vpp', 'cbf']
+
+// Numerically integrate shock displacement through the stroke using variable LR,
+// then compute force at wheel at each travel point.
+function computeForceCurve(preset, geoLR, wheelTravel, sagPct, shockStroke, riderKg, rearFrac, N = 20) {
+  if (!geoLR) return Array(N + 1).fill(0)
+  const mod = preset ? getLrAtTravel(preset, sagPct) / averageLr(preset) : 1.0
+  const k = springRateNmm(riderKg, rearFrac, geoLR * mod, sagPct, shockStroke)
+  const pts = []
+  let shockDisp = 0
+  for (let i = 0; i <= N; i++) {
+    if (i > 0) {
+      const t_mid = (i - 0.5) / N
+      const lr_t = preset ? geoLR * getLrAtTravel(preset, t_mid) / averageLr(preset) : geoLR
+      shockDisp += (wheelTravel / N) / lr_t
+    }
+    const lr_t = preset ? geoLR * getLrAtTravel(preset, i / N) / averageLr(preset) : geoLR
+    pts.push(k ? Math.round(k * shockDisp / lr_t) : 0)
+  }
+  return pts
+}
+
 function getBiasZone(pct) {
   if (pct < 58) return BIAS_ZONES[0]
   if (pct < 65) return BIAS_ZONES[1]
@@ -103,15 +125,18 @@ export default function SpringCalculator() {
     const lbin = nmm ? nmmToLbin(nmm) : null
     const rearForceN = riderKg * G * rearFrac
 
+    const chartPresets = LINKAGE_PRESETS.filter(p => CHART_PRESET_IDS.includes(p.id))
+    const neutralPts = computeForceCurve(null, geoLR, vals.wheelTravel, sagPct, vals.shockStroke, riderKg, rearFrac)
+    const presetPts = chartPresets.map(p => computeForceCurve(p, geoLR, vals.wheelTravel, sagPct, vals.shockStroke, riderKg, rearFrac))
+
     const curveData = Array.from({ length: 21 }, (_, i) => {
-      const t = i / 20
-      const shockDisp = vals.wheelTravel * t / (effectiveLR || 1)
-      const forceAtWheel = nmm ? nmm * shockDisp / (effectiveLR || 1) : 0
-      return {
-        sagMm: Math.round(vals.wheelTravel * t),
-        forceWheel: Math.round(forceAtWheel),
+      const obj = {
+        sagMm: Math.round(vals.wheelTravel * i / 20),
         targetLine: Math.round(rearForceN),
+        force_neutral: neutralPts[i],
       }
+      chartPresets.forEach((p, j) => { obj[`force_${p.id}`] = presetPts[j][i] })
+      return obj
     })
 
     return { riderKg, geoLR, effectiveLR, linkageMod, rearForceN, nmm, lbin, curveData }
@@ -359,10 +384,14 @@ export default function SpringCalculator() {
               />
               <RechartTooltip
                 contentStyle={{ background: '#111e30', border: '1px solid #1e3048', fontFamily: 'JetBrains Mono', fontSize: 12 }}
-                formatter={(v, name) => [
-                  `${v} N (${Math.round(v / G)} kg)`,
-                  name === 'forceWheel' ? 'Spring force at wheel' : 'Rear load target',
-                ]}
+                formatter={(v, name, props) => {
+                  const activeKey = linkageId ? `force_${linkageId}` : 'force_neutral'
+                  if (props.dataKey !== activeKey && props.dataKey !== 'targetLine') return [null, null]
+                  return [
+                    `${v} N (${Math.round(v / G)} kg)`,
+                    props.dataKey === 'targetLine' ? 'Rear load' : 'Spring force at wheel',
+                  ]
+                }}
                 labelFormatter={(l) => `Wheel travel: ${l} mm`}
               />
               <ReferenceLine
@@ -370,12 +399,32 @@ export default function SpringCalculator() {
                 stroke={zone.color} strokeDasharray="4 2"
                 label={{ value: `${Math.round(sagPct * 100)}% sag`, fill: zone.color, fontSize: 10, position: 'top' }}
               />
-              <Line type="monotone" dataKey="forceWheel" stroke={zone.color} strokeWidth={2} dot={false} name="forceWheel" />
+              {/* Neutral line */}
+              <Line
+                type="monotone" dataKey="force_neutral" dot={false} name="Neutral"
+                stroke={!linkageId ? zone.color : '#888'}
+                strokeWidth={!linkageId ? 2.5 : 1}
+                strokeOpacity={!linkageId ? 1 : 0.2}
+              />
+              {/* Per-linkage lines */}
+              {LINKAGE_PRESETS.filter(p => CHART_PRESET_IDS.includes(p.id)).map(p => {
+                const active = linkageId === p.id
+                return (
+                  <Line
+                    key={p.id} type="monotone" dataKey={`force_${p.id}`} dot={false} name={p.name}
+                    stroke={p.color}
+                    strokeWidth={active ? 2.5 : 1}
+                    strokeOpacity={active ? 1 : 0.18}
+                  />
+                )
+              })}
               <Line type="monotone" dataKey="targetLine" stroke="#f0b429" strokeWidth={1.5} strokeDasharray="5 3" dot={false} name="targetLine" />
             </LineChart>
           </ResponsiveContainer>
           <div className="chart-legend">
-            <span><span className="dot" style={{ background: zone.color }} /> Spring force at wheel (rises as shock compresses)</span>
+            <span><span className="dot" style={{ background: !linkageId ? zone.color : activePreset?.color || zone.color }} />
+              {activePreset ? activePreset.name : 'Neutral'} spring force at wheel
+            </span>
             <span><span className="dot" style={{ background: '#f0b429' }} /> Your rear load — lines cross at target sag</span>
           </div>
         </div>
