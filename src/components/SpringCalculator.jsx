@@ -3,12 +3,11 @@ import { springRateNmm, leverageRatio, nmmToLbin, G } from '../lib/springMath'
 import { LINKAGE_PRESETS, getLrAtTravel, averageLr } from '../lib/linkagePresets'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip as RechartTooltip, ReferenceLine, ResponsiveContainer,
+  Tooltip as RechartTooltip, ReferenceLine, ReferenceDot, ResponsiveContainer,
 } from 'recharts'
 
 const DEFAULTS = {
   riderWeightKg: 83.9,
-  ebonusKg: 0,
   wheelTravel: 150,
   shockStroke: 55,
   rearPct: 65,
@@ -146,21 +145,28 @@ function InputField({ label, value, onChange, unit, min, max, step, tip }) {
 
 export default function SpringCalculator() {
   const [vals, setVals] = useState(DEFAULTS)
-  const [sagPct, setSagPct] = useState(0.28)
+  const [sagPct, setSagPct] = useState(0.30)
   const [linkageId, setLinkageId] = useState(null)
   const [weightLbs, setWeightLbs] = useState(true)
+  const [customProg, setCustomProg] = useState(null) // null = follow preset
 
   const set = (k) => (v) => setVals((p) => ({ ...p, [k]: v }))
   const displayWeight = (kg) => weightLbs ? Math.round(kg * 2.20462 * 10) / 10 : Math.round(kg * 10) / 10
   const toKg = (v) => weightLbs ? v / 2.20462 : v
   const wUnit = weightLbs ? 'lbs' : 'kg'
 
+  const selectedPreset = LINKAGE_PRESETS.find((p) => p.id === linkageId)
+
   const calc = useMemo(() => {
-    const riderKg = vals.riderWeightKg + vals.ebonusKg
+    const riderKg = vals.riderWeightKg
     const rearFrac = vals.rearPct / 100
     const geoLR = leverageRatio(vals.wheelTravel, vals.shockStroke)
     const preset = LINKAGE_PRESETS.find((p) => p.id === linkageId)
-    const linkageMod = preset ? getLrAtTravel(preset, sagPct) / averageLr(preset) : 1.0
+    // If user entered a custom progression %, compute linkageMod from a linear curve model.
+    // For a linear curve with P% progression, LR at sag = 1 + (P/200)*(1 - 2*sagPct), avg = 1.0
+    const linkageMod = customProg !== null
+      ? 1 + (customProg / 200) * (1 - 2 * sagPct)
+      : preset ? getLrAtTravel(preset, sagPct) / averageLr(preset) : 1.0
     const effectiveLR = geoLR ? geoLR * linkageMod : null
     const nmm = springRateNmm(riderKg, rearFrac, effectiveLR, sagPct, vals.shockStroke)
     const lbin = nmm ? nmmToLbin(nmm) : null
@@ -206,7 +212,7 @@ export default function SpringCalculator() {
     ]
 
     return { riderKg, geoLR, effectiveLR, linkageMod, rearForceN, nmm, lbin, curveData, yDomain, yDomainClamped, lrDomain }
-  }, [vals, sagPct, linkageId])
+  }, [vals, sagPct, linkageId, customProg])
 
   const zone = getSagZone(sagPct)
   const biasZone = getBiasZone(vals.rearPct)
@@ -235,7 +241,7 @@ export default function SpringCalculator() {
           </div>
           <InputField
             label="Rider + Gear"
-            tip="Your body weight plus riding gear. Add ~2-3 kg / 5 lbs for helmet, pads, pack, shoes."
+            tip="Your body weight plus riding gear. Add ~2-3 kg / 5 lbs for helmet, pads, pack, shoes. E-bike riders: bike weight doesn't affect sag-based calculations, but if you want a more conservative estimate you can fold motor/battery weight (~6-8 kg) in here."
             value={displayWeight(vals.riderWeightKg)}
             onChange={(v) => set('riderWeightKg')(toKg(v))}
             unit={wUnit} min={weightLbs ? 66 : 30} max={weightLbs ? 440 : 200} step={weightLbs ? 1 : 0.5}
@@ -295,17 +301,6 @@ export default function SpringCalculator() {
             </div>
           </div>
 
-          {/* E-bike bonus — in refine section */}
-          <div className="input-group-header tune-header">
-            E-bike Motor / Battery
-          </div>
-          <InputField
-            label="Motor + battery mass"
-            tip="Extra mass from motor + battery. Only needed for e-bikes — adds directly to the spring load. 0 for regular bikes."
-            value={displayWeight(vals.ebonusKg)}
-            onChange={(v) => set('ebonusKg')(toKg(v))}
-            unit={wUnit} min={0} max={weightLbs ? 55 : 25} step={weightLbs ? 0.5 : 0.1}
-          />
 
           {/* Rear weight bias */}
           <div className="input-group-header tune-header">
@@ -342,6 +337,31 @@ export default function SpringCalculator() {
               ))}
             </div>
           </div>
+
+          {/* Progression override */}
+          <div className="input-group-header tune-header" style={{ marginTop: 12 }}>
+            Linkage Progression
+            <InfoIcon text={`End-to-end progression % — how much stiffer the suspension gets from top to bottom of travel.\n\nAuto-fills from your selected suspension type. Override if you know your bike's actual number (from Linkage Design, manufacturer data, or Cascade Components pages).\n\nSwitching suspension type resets this to the preset value.`} width={280} />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ flex: 1 }}>
+              <InputField
+                label={customProg !== null ? 'Custom (linear model)' : 'Enter to override preset'}
+                value={customProg !== null ? customProg : ''}
+                onChange={(v) => setCustomProg(Math.max(0, Math.min(50, v)))}
+                unit="%" min={0} max={50} step={1}
+                tip="Optional. Enter your bike's actual end-to-end progression % from linkage software or manufacturer data (e.g. Cascade Components product pages show this). Overrides the suspension type preset. Leave blank to use the preset."
+              />
+            </div>
+            {customProg !== null && (
+              <button
+                onClick={() => setCustomProg(null)}
+                style={{ fontSize: 10, color: 'var(--text-dim)', background: 'none', border: '1px solid var(--border)', borderRadius: 4, padding: '3px 7px', cursor: 'pointer', marginTop: 18, whiteSpace: 'nowrap' }}
+              >
+                reset
+              </button>
+            )}
+          </div>
         </div>
 
         {/* ── Results + Linkage ── */}
@@ -364,11 +384,16 @@ export default function SpringCalculator() {
                 <InfoIcon text={"Spring rates are sold in 25 lb/in steps (Fox, RockShox) or 50 lb/in steps (Cane Creek).\n\nThe gap is bridgeable with preload — a few collar turns can shift your effective rate by 25–50 lb/in. That's why Cane Creek can sell in larger increments without leaving riders between springs.\n\nWhen in doubt, go to the next stiffer spring and back off with preload."} width={280} />
               </div>
             )}
+            {customProg !== null && (
+              <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 4, fontFamily: 'var(--font-mono)' }}>
+                custom {customProg}% progression · linear model
+              </div>
+            )}
             <div className="results-meta">
               <Tip text="Leverage Ratio = wheel travel ÷ shock stroke. Higher LR = shock moves less per mm of wheel travel = stiffer spring needed.">
                 <span className="results-meta-tip">
                   LR {calc.geoLR ? calc.geoLR.toFixed(2) : '—'}:1
-                  {linkageId && calc.effectiveLR ? <> → <span style={{ color: activePreset?.color }}>{calc.effectiveLR.toFixed(2)}:1</span></> : null}
+                  {(linkageId || customProg !== null) && calc.effectiveLR ? <> → <span style={{ color: activePreset?.color || zone.color }}>{calc.effectiveLR.toFixed(2)}:1</span></> : null}
                 </span>
               </Tip>
               <span className="results-meta-sep">·</span>
@@ -395,7 +420,7 @@ export default function SpringCalculator() {
           <div className="linkage-pills">
             <div
               className={`linkage-pill ${!linkageId ? 'linkage-pill-active' : ''}`}
-              onClick={() => setLinkageId(null)}
+              onClick={() => { setLinkageId(null); setCustomProg(null) }}
             >
               <span className="lp-dot" style={{ background: 'var(--text-dim)' }} />
               <div className="lp-text">
@@ -415,7 +440,7 @@ export default function SpringCalculator() {
                   <div
                     className={`linkage-pill ${active ? 'linkage-pill-active' : ''}`}
                     style={active ? { borderColor: p.color } : {}}
-                    onClick={() => setLinkageId(active ? null : p.id)}
+                    onClick={() => { setLinkageId(active ? null : p.id); setCustomProg(null) }}
                   >
                     <span className="lp-dot" style={{ background: p.color }} />
                     <div className="lp-text">
@@ -506,6 +531,23 @@ export default function SpringCalculator() {
                     <ReferenceLine x={Math.round(vals.wheelTravel * sagPct)}
                       stroke={zone.color} strokeDasharray="4 2"
                       label={{ value: `${Math.round(sagPct * 100)}% sag`, fill: zone.color, fontSize: 9, position: 'top' }} />
+                    {calc.effectiveLR && (linkageId || customProg !== null) && (
+                      <ReferenceDot
+                        x={Math.round(vals.wheelTravel * sagPct)}
+                        y={parseFloat(calc.effectiveLR.toFixed(3))}
+                        r={4}
+                        fill={activePreset?.color || zone.color}
+                        stroke="#1c1814"
+                        strokeWidth={1.5}
+                        label={{
+                          value: `${calc.effectiveLR.toFixed(2)}:1`,
+                          position: 'right',
+                          fill: activePreset?.color || zone.color,
+                          fontSize: 10,
+                          fontFamily: 'JetBrains Mono',
+                        }}
+                      />
+                    )}
                     <Line type="monotone" dataKey="lr_neutral" dot={false}
                       stroke={!linkageId ? zone.color : '#bbb'} strokeWidth={!linkageId ? 2 : 1} strokeOpacity={!linkageId ? 1 : 0.2} />
                     {LINKAGE_PRESETS.filter(p => CHART_PRESET_IDS.includes(p.id)).map(p => {
