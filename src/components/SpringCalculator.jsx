@@ -270,41 +270,19 @@ export default function SpringCalculator() {
                 <InfoIcon text="Spring rates are sold in increments of 25 lb/in. Round to nearest available. Go stiffer for heavier/aggressive riding, softer for lighter/mellow." width={240} />
               </div>
             )}
-          </div>
-
-          {/* ── Secondary stats ── */}
-          <div className="results-secondary">
-            <div className="stat-row">
-              <Tip text="Leverage Ratio = wheel travel ÷ shock stroke. A 3:1 LR means the spring must push 3× harder than the force at the rear wheel.">
-                <span className="stat-label stat-label-tip">Leverage Ratio</span>
-              </Tip>
-              <span className="stat-value accent">{calc.geoLR ? calc.geoLR.toFixed(2) : '—'} : 1</span>
-            </div>
-
-            {linkageId && (
-              <div className="stat-row">
-                <Tip text="The LR at your sag point, adjusted for the selected linkage curve. Used instead of the simple travel÷stroke average.">
-                  <span className="stat-label stat-label-tip">LR at sag ({Math.round(sagPct * 100)}%)</span>
-                </Tip>
-                <span className="stat-value" style={{ color: activePreset?.color }}>
-                  {calc.effectiveLR ? calc.effectiveLR.toFixed(2) : '—'} : 1
-                  <span className="stat-modifier">{calc.linkageMod > 1 ? '+' : ''}{Math.round((calc.linkageMod - 1) * 100)}%</span>
+            <div className="results-meta">
+              <Tip text="Leverage Ratio = wheel travel ÷ shock stroke. Higher LR = shock moves less per mm of wheel travel = stiffer spring needed.">
+                <span className="results-meta-tip">
+                  LR {calc.geoLR ? calc.geoLR.toFixed(2) : '—'}:1
+                  {linkageId && calc.effectiveLR ? <> → <span style={{ color: activePreset?.color }}>{calc.effectiveLR.toFixed(2)}:1</span></> : null}
                 </span>
-              </div>
-            )}
-
-            <div className="stat-row">
-              <Tip text="Rider weight × rear bias = force the rear shock must support at sag.">
-                <span className="stat-label stat-label-tip">Rear Load</span>
               </Tip>
-              <span className="stat-value">
-                {Math.round(calc.rearForceN / G)} kg
-                <span style={{ color: 'var(--text-dim)' }}> · {Math.round(calc.rearForceN)} N</span>
-              </span>
-            </div>
-
-            <div className="rate-formula-note">
-              k = rider × bias × LR / (sag% × stroke)
+              <span className="results-meta-sep">·</span>
+              <Tip text="Rider weight × rear bias = force the rear shock must support at sag.">
+                <span className="results-meta-tip">
+                  Rear load {Math.round(calc.rearForceN / G)} kg · {Math.round(calc.rearForceN)} N
+                </span>
+              </Tip>
             </div>
           </div>
 
@@ -334,7 +312,7 @@ export default function SpringCalculator() {
             </div>
             {LINKAGE_PRESETS.filter(p => ['dwlink', 'horst', 'vpp', 'cbf'].includes(p.id)).map((p) => {
               const mod = getLrAtTravel(p, sagPct) / averageLr(p)
-              const modStr = (mod > 1 ? '+' : '') + Math.round((mod - 1) * 100) + '% at sag'
+              const modStr = (mod > 1 ? '+' : '') + Math.round((mod - 1) * 100) + '%'
               const active = linkageId === p.id
               return (
                 <Tip key={p.id} text={p.description} width={260}>
