@@ -19,7 +19,7 @@ export default function AboutPage() {
           </p>
 
           <p className="about-graf">
-            I got into this properly in Jackson Hole. Short seasons mean a bad
+            I got into this properly in the PNW. Short seasons mean a bad
             setup costs you riding days you can't get back — and good suspension
             work turned out to mean
             more than fresh seals. Spring rate, sag, shim stack, valve
@@ -29,11 +29,6 @@ export default function AboutPage() {
             right to begin with.
           </p>
 
-          <p className="about-graf">
-            Most suspension service in the industry stops at mechanical:
-            pull it apart, replace seals, put it back together. That's
-            necessary. But it's also half the job.
-          </p>
 
           <p className="about-graf">
             I built <strong>LinkageLab</strong> because I saw too many riders
@@ -71,10 +66,7 @@ export default function AboutPage() {
             <span className="about-sidebar-label">Based in</span>
             <span className="about-sidebar-val">Los Angeles, CA</span>
           </div>
-          <div className="about-sidebar-block">
-            <span className="about-sidebar-label">Background</span>
-            <span className="about-sidebar-val">Jackson Hole, WY</span>
-          </div>
+  
           <div className="about-sidebar-block">
             <span className="about-sidebar-label">Tools</span>
             <span className="about-sidebar-val">LinkageLab · Linkage Analysis</span>
