@@ -108,16 +108,16 @@ Six archetypes with curve shapes based on published kinematic data:
 
 Adjustment % shown at 30% sag — the typical operating point for a coil enduro setup.
 
-| Linkage | Character | Adj. at 30% sag | Examples |
-|---|---|---|---|
-| Horst / Four-Bar | Moderately high LR at sag, slight fall | **+3%** | Specialized FSR, many Horst-link designs |
-| VPP | Slightly low LR at sag, U-shaped curve | **−4%** | Santa Cruz, Intense |
-| DW-Link / Maestro | Very high LR at sag, strongly progressive | **+11%** | Ibis, Pivot, Evil |
-| Single Pivot | Linear / flat rate | **0%** | Evil Delta, Commencal (some), older full-sus |
-| Flex Stay | Mildly falling, nearly linear | **+3%** | Yeti SB, Rocky Mountain Instinct |
-| High Pivot | High LR at sag, steep progressive ending | **+6%** | Forbidden Druid, Norco Optic, Deviate Claymore |
+| Linkage | Character | Adj. at 30% sag | Reference bike | Examples |
+|---|---|---|---|---|
+| Horst / Four-Bar | Consistently falling LR, moderate correction | **+5%** | 2025 Transition Sentinel V3 | Specialized FSR, Trek, Transition |
+| VPP (modern) | Steeply falling progressive, not U-shaped | **+6%** | 2025 Santa Cruz Bronson V5 | Santa Cruz, Intense |
+| DW-Link / Maestro | PBLE — very high LR at sag, biggest correction | **+14%** | 2025 Ibis Ripmo V3 | Ibis, Pivot, Evil |
+| Single Pivot | Linear / flat rate | **0%** | — | Evil Delta, Commencal (some), older full-sus |
+| Flex Stay | Mildly falling, nearly linear | **+3%** | — | Yeti SB, Rocky Mountain Instinct |
+| High Pivot | High LR at sag, steep progressive ending | **+6%** | Deviate Claymore | Forbidden Druid, Norco Optic, Deviate Claymore |
 
-High-pivot curve based on Deviate Claymore measured data: start 2.97 → sag 2.85 → end 2.30, 22.6% progression. Curves are representative archetypes — real bikes vary.
+Horst, VPP, and DW-Link curves built from measured Avalanche data on three canonical bikes (Sentinel V3, Bronson V5, Ripmo V3). High-pivot curve based on Deviate Claymore measured data (2.97 → 2.30, 22.6% progression), validated against Forbidden Druid V2. Curves are representative archetypes — real bikes vary.
 
 ---
 

@@ -3,7 +3,7 @@ import { springRateNmm, leverageRatio, nmmToLbin, G } from '../lib/springMath'
 import { LINKAGE_PRESETS, getLrAtTravel, averageLr } from '../lib/linkagePresets'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip as RechartTooltip, ReferenceLine, ReferenceDot, ResponsiveContainer,
+  Tooltip as RechartTooltip, ReferenceLine, ResponsiveContainer,
 } from 'recharts'
 
 const DEFAULTS = {
@@ -38,28 +38,28 @@ const CHART_PRESET_IDS = ['dwlink', 'horst', 'vpp', 'highpivot']
 // Rider-facing suspension type labels mapped to underlying LR presets
 const SUSPENSION_TYPES = [
   {
-    presetId: 'dwlink',
-    label: 'DW / High Support Linkage',
-    sublabel: 'DW-Link, Maestro, firm midstroke, higher sag support',
-    tip: 'Higher leverage ratio at sag than average. The shock must work harder to reach sag, so the calc adjusts your spring rate softer to compensate. Firm, supportive midstroke feel.',
+    presetId: 'horst',
+    label: 'Horst / Four-Bar',
+    sublabel: 'Specialized FSR, Transition, Trek — most common baseline behavior',
+    tip: 'Consistently falling LR curve. At 30% sag the LR sits ~5% above the travel average. The most common rear suspension geometry — if a published chart or calculator doesn\'t ask about linkage type, it\'s probably assuming something close to this. Curve based on measured 2025 Transition Sentinel V3 (3.36 → 2.56, 24% progression).',
   },
   {
     presetId: 'vpp',
-    label: 'VPP / Progressive Linkage',
-    sublabel: 'VPP-style bikes, balanced support with progressive feel',
-    tip: 'Slightly lower LR at sag that rises through the stroke. The progressive ramp gives bottom-out resistance without needing a stiffer spring. Balanced, poppy feel.',
+    label: 'VPP — Modern',
+    sublabel: 'Falling progressive curve, not the old U-shape',
+    tip: 'Modern VPP is a falling progressive curve — starts high and drops steadily. Not the bathtub U-curve of older designs. At 30% sag the LR is ~6% above average. Curve based on measured 2025 Santa Cruz Bronson V5 (3.08 → 2.26, 27% progression).',
   },
   {
-    presetId: 'horst',
-    label: 'Horst / Four-Bar (Neutral Baseline)',
-    sublabel: 'FSR / Horst-link bikes, most common modern baseline behavior',
-    tip: 'Near-neutral leverage ratio at sag. The most common rear suspension category and the implicit baseline most published spring rate charts are built around. If unsure, this or Unknown are your safest options.',
+    presetId: 'dwlink',
+    label: 'DW-Link / Maestro',
+    sublabel: 'Ibis, Pivot, Evil — biggest spring correction of any type',
+    tip: 'LR drops steeply in the first third of travel (right where sag sits), then levels off. At 30% sag the LR is ~14% above the travel average — the largest correction of any linkage type. Curve based on measured 2025 Ibis Ripmo V3 (3.50 → 2.12, 30% progression). Also covers Pivot and Evil bikes using similar DW-Link/Maestro geometry.',
   },
   {
     presetId: 'highpivot',
-    label: 'High Pivot / Rearward Kinematics',
-    sublabel: 'High pivot with idler pulley — supple off the top, steeply progressive at end-stroke',
-    tip: 'Bikes with an idler pulley and rearward axle path (e.g. Forbidden Druid, Norco Optic, Deviate Claymore). LR starts high and falls steeply — very progressive. Curve based on Deviate Claymore data (2.97 → 2.30, 22.6% progression).',
+    label: 'High Pivot / Rearward Axle Path',
+    sublabel: 'Forbidden, Norco Optic, Deviate Claymore — supple off the top, steeply progressive at end-stroke',
+    tip: 'Bikes with an idler pulley and rearward axle path. LR starts high and falls gradually through the first half, then drops sharply toward bottom-out. At 30% sag LR is ~6% above average, but the steep end-stroke progression is the defining character. Curve based on Deviate Claymore measured data (2.97 → 2.30, 22.6% progression), validated against Forbidden Druid V2.',
   },
 ]
 
@@ -413,6 +413,19 @@ export default function SpringCalculator() {
                 </span>
               </Tip>
             </div>
+          </div>
+
+          {/* ── Explainer ── */}
+          <div style={{ marginTop: 18, padding: '10px 12px', background: 'rgba(255,255,255,0.025)', borderRadius: 6, border: '1px solid var(--border)', fontSize: 11, lineHeight: 1.65, color: 'var(--text-dim)' }}>
+            <div style={{ fontWeight: 600, color: 'var(--text-bright)', marginBottom: 5, fontSize: 11, letterSpacing: '0.01em' }}>
+              Why suspension type changes your spring rate
+            </div>
+            <p style={{ margin: 0 }}>
+              Your spring rate is set so the shock reaches your sag target under your weight. But most linkages have a <em>higher</em> leverage ratio early in the stroke — right where sag sits. That means the spring is working harder at sag than the simple travel÷stroke ratio suggests, so a stiffer spring is required.
+            </p>
+            <p style={{ margin: '6px 0 0' }}>
+              Selecting a type below applies a correction: it takes the LR at your exact sag point and divides by the travel average. DW-Link bikes need the biggest correction (+14%) because their LR drops most steeply in the first third of travel. High pivot and four-bar types need a moderate correction (+5–6%). Selecting nothing uses raw geometry only — the same assumption Fox and MRP calculators make.
+            </p>
           </div>
 
           {/* ── Suspension Type Selector ── */}

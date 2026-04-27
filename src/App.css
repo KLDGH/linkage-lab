@@ -398,6 +398,7 @@
   white-space: pre-wrap; word-break: break-word;
   pointer-events: none; opacity: 0;
   transition: opacity 0.15s; z-index: 100;
+  text-transform: none; letter-spacing: 0;
 }
 .tip-host:hover::after { opacity: 1; }
 
