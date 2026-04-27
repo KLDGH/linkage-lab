@@ -16,9 +16,9 @@ const DEMO_BIKE = {
 // Anti-squat and kickback are representative of high-pivot-with-idler character.
 const chartData = Array.from({ length: 21 }, (_, i) => {
   const t = i / 20
-  // Progressive Linear matched to Linkage Design blog data: 2.95 → 2.74 @ 30% → 2.25
-  // sin term adds the slight natural bow while preserving both endpoints exactly
-  const lr = parseFloat((2.95 - 0.70 * t - 0.03 * Math.sin(t * Math.PI)).toFixed(2))
+  // Power curve matched to Blister Review + Avalanche data: 2.91 → 2.67 @ 30% → 2.25
+  // Concave shape — drops slowly early, accelerates toward end of travel
+  const lr = parseFloat((2.25 + 0.66 * Math.pow(1 - t, 1.3)).toFixed(2))
   // Idler pulley keeps AS elevated in low gear; falls as chainline changes at depth
   const asLow  = Math.round(148 - t * 55 - t * t * 10)  // 32t sprocket
   const asMid  = Math.round(108 - t * 40 - t * t * 8)   // 21t sprocket
@@ -87,7 +87,7 @@ export default function LinkageAnalysis() {
                 labelFormatter={l => `${l}% travel`} />
               <ReferenceLine x={30} stroke="#3b82f6" strokeDasharray="4 2"
                 label={{ value: '30% sag', fill: '#3b82f6', fontSize: 9, position: 'insideTopRight' }} />
-              <Line type="linear" dataKey="lr" stroke="#00c97a" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="lr" stroke="#00c97a" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>
