@@ -4,23 +4,27 @@ import {
 } from 'recharts'
 
 const DEMO_BIKE = {
-  name: 'Specialized Stumpjumper EVO 29',
-  travel: 150,
-  stroke: 57.5,
-  linkage: 'Horst Link (FSR)',
+  name: 'Forbidden Druid V2',
+  travel: 130,
+  stroke: 50,
+  linkage: 'Inverted Horst 4-Bar with Rocker Link',
   year: '2023',
 }
 
-// Demo data for a 150mm Horst-link trail bike.
-// LR, anti-squat (3 gear scenarios), and pedal kickback
-// are representative of published kinematics for this category.
+// Data based on Avalanche measured kinematics for the 2023 Forbidden Druid V2.
+// LR: Progressive Linear — 2.93 start → 2.68 at sag → 2.25 end, 23.2% progression.
+// Anti-squat and kickback are representative of high-pivot-with-idler character.
 const chartData = Array.from({ length: 21 }, (_, i) => {
   const t = i / 20
-  const lr = parseFloat((2.82 - t * 0.28 + Math.sin(t * Math.PI) * 0.04).toFixed(2))
-  const asLow  = Math.round(128 - t * 42 - t * t * 8)   // 32t sprocket
-  const asMid  = Math.round(96  - t * 30 - t * t * 6)   // 21t sprocket
-  const asHigh = Math.round(70  - t * 22 - t * t * 4)   // 11t sprocket
-  const kickback = parseFloat((1.8 + t * 11.2 + Math.sin(t * Math.PI * 0.9) * 1.6).toFixed(1))
+  // Progressive Linear matched to Linkage Design blog data: 2.95 → 2.74 @ 30% → 2.25
+  // sin term adds the slight natural bow while preserving both endpoints exactly
+  const lr = parseFloat((2.95 - 0.70 * t - 0.03 * Math.sin(t * Math.PI)).toFixed(2))
+  // Idler pulley keeps AS elevated in low gear; falls as chainline changes at depth
+  const asLow  = Math.round(148 - t * 55 - t * t * 10)  // 32t sprocket
+  const asMid  = Math.round(108 - t * 40 - t * t * 8)   // 21t sprocket
+  const asHigh = Math.round(72  - t * 28 - t * t * 5)   // 11t sprocket
+  // Idler reduces kickback vs non-idler high pivot; still progressive through travel
+  const kickback = parseFloat((2.5 + t * 8.5 + Math.sin(t * Math.PI * 0.8) * 1.2).toFixed(1))
   return {
     travel: Math.round(t * 100),
     lr,
@@ -72,7 +76,7 @@ export default function LinkageAnalysis() {
           <div className="la-chart-title">Leverage Ratio</div>
           <div className="la-chart-sub">wheel travel ÷ shock travel</div>
           <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
+            <LineChart data={chartData} margin={{ top: 22, right: 12, left: 0, bottom: 8 }}>
               <CartesianGrid {...GRID} />
               <XAxis dataKey="travel" tickFormatter={v => `${v}%`} tick={TICK} />
               <YAxis domain={['auto', 'auto']} tickFormatter={v => `${v.toFixed(1)}`}
@@ -81,9 +85,9 @@ export default function LinkageAnalysis() {
               <Tooltip contentStyle={TT}
                 formatter={v => [`${v} : 1`, 'LR']}
                 labelFormatter={l => `${l}% travel`} />
-              <ReferenceLine x={28} stroke="#3b82f6" strokeDasharray="4 2"
-                label={{ value: 'sag', fill: '#3b82f6', fontSize: 9, position: 'top' }} />
-              <Line type="monotone" dataKey="lr" stroke="#00c97a" strokeWidth={2} dot={false} />
+              <ReferenceLine x={30} stroke="#3b82f6" strokeDasharray="4 2"
+                label={{ value: '30% sag', fill: '#3b82f6', fontSize: 9, position: 'insideTopRight' }} />
+              <Line type="linear" dataKey="lr" stroke="#00c97a" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -93,7 +97,7 @@ export default function LinkageAnalysis() {
           <div className="la-chart-title">Anti-Squat</div>
           <div className="la-chart-sub">% — 100% = neutral, higher = anti-squat</div>
           <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
+            <LineChart data={chartData} margin={{ top: 22, right: 12, left: 0, bottom: 8 }}>
               <CartesianGrid {...GRID} />
               <XAxis dataKey="travel" tickFormatter={v => `${v}%`} tick={TICK} />
               <YAxis domain={[40, 150]} tickFormatter={v => `${v}%`}
@@ -106,8 +110,8 @@ export default function LinkageAnalysis() {
                 labelFormatter={l => `${l}% travel`} />
               <ReferenceLine y={100} stroke="#f0b429" strokeDasharray="4 2"
                 label={{ value: '100%', fill: '#f0b429', fontSize: 9, position: 'right' }} />
-              <ReferenceLine x={28} stroke="#3b82f6" strokeDasharray="4 2"
-                label={{ value: 'sag', fill: '#3b82f6', fontSize: 9, position: 'top' }} />
+              <ReferenceLine x={30} stroke="#3b82f6" strokeDasharray="4 2"
+                label={{ value: '30% sag', fill: '#3b82f6', fontSize: 9, position: 'insideTopRight' }} />
               <Line type="monotone" dataKey="as_low"  stroke="#00c97a" strokeWidth={2} dot={false} name="as_low" />
               <Line type="monotone" dataKey="as_mid"  stroke="#3b82f6" strokeWidth={1.5} strokeDasharray="5 3" dot={false} name="as_mid" />
               <Line type="monotone" dataKey="as_high" stroke="#8b5cf6" strokeWidth={1.5} strokeDasharray="2 3" dot={false} name="as_high" />
@@ -125,7 +129,7 @@ export default function LinkageAnalysis() {
           <div className="la-chart-title">Pedal Kickback</div>
           <div className="la-chart-sub">degrees of crank rotation per mm wheel travel</div>
           <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
+            <LineChart data={chartData} margin={{ top: 22, right: 12, left: 0, bottom: 8 }}>
               <CartesianGrid {...GRID} />
               <XAxis dataKey="travel" tickFormatter={v => `${v}%`} tick={TICK} />
               <YAxis domain={[0, 16]} tickFormatter={v => `${v}°`}
@@ -133,8 +137,8 @@ export default function LinkageAnalysis() {
               <Tooltip contentStyle={TT}
                 formatter={v => [`${v}°`, 'Kickback']}
                 labelFormatter={l => `${l}% travel`} />
-              <ReferenceLine x={28} stroke="#3b82f6" strokeDasharray="4 2"
-                label={{ value: 'sag', fill: '#3b82f6', fontSize: 9, position: 'top' }} />
+              <ReferenceLine x={30} stroke="#3b82f6" strokeDasharray="4 2"
+                label={{ value: '30% sag', fill: '#3b82f6', fontSize: 9, position: 'insideTopRight' }} />
               <Line type="monotone" dataKey="kickback" stroke="#f0b429" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
