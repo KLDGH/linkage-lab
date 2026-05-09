@@ -13,8 +13,8 @@ export default function ToolsPage() {
         <nav className="tab-nav">
           <a href="#spring" className="tab-link">01 · Spring Calculator</a>
           <a href="#leverage" className="tab-link">02 · Leverage Curves</a>
-          <a href="#analysis" className="tab-link tab-link-alpha">
-            03 · Linkage Analysis <span className="tab-alpha-badge">α</span>
+          <a href="#analysis" className="tab-link">
+            03 · Linkage Analysis
           </a>
         </nav>
       </div>

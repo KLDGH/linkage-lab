@@ -5,7 +5,7 @@ export default function AboutPage() {
         <p className="page-eyebrow">Who's behind this</p>
         <h1 className="page-title">About</h1>
         <p className="page-lead">
-          Suspension service and tool building out of Los Angeles.
+          Suspension tuning and tool building.
         </p>
       </div>
 
@@ -13,22 +13,20 @@ export default function AboutPage() {
         <div className="about-main">
 
           <p className="about-graf about-graf-lead">
-            Solitaire Dynamics is one person. I do suspension work and I build
-            tools when the ones that exist aren't good enough — or when
+            Solitaire Dynamics is one person. I tune suspension and build tools —
+            the tools when the ones that exist aren&apos;t good enough, or when
             someone built something great and then disappeared.
           </p>
 
           <p className="about-graf">
-            I got into this properly in the PNW. Short seasons mean a bad
-            setup costs you riding days you can't get back — and good suspension
-            work turned out to mean
-            more than fresh seals. Spring rate, sag, shim stack, valve
-            configuration, fluid viscosity — every variable compounds. A damper
-            rebuilt to factory spec still won't perform if the valving is
-            tuned for someone 40 lbs lighter or the spring rate was never
-            right to begin with.
+            Tuning means spring rate, shim stack, valve configuration, fluid
+            weight. The mechanical work — pulling shocks apart, replacing seals —
+            is how you execute the tune. I got into this properly in the PNW,
+            where short seasons mean a bad setup costs you riding days you
+            can&apos;t get back. A damper rebuilt to factory spec won&apos;t perform
+            if the valving was tuned for someone 40 lbs lighter, or the spring
+            rate was never right to begin with. Those variables compound.
           </p>
-
 
           <p className="about-graf">
             I built <strong>LinkageLab</strong> because I saw too many riders

@@ -10,9 +10,6 @@ export default function SiteNav() {
         <NavLink to="/" end className={({ isActive }) => 'site-nav-link' + (isActive ? ' site-nav-active' : '')}>
           Tools
         </NavLink>
-        <NavLink to="/services" className={({ isActive }) => 'site-nav-link' + (isActive ? ' site-nav-active' : '')}>
-          Services
-        </NavLink>
         <NavLink to="/about" className={({ isActive }) => 'site-nav-link' + (isActive ? ' site-nav-active' : '')}>
           About
         </NavLink>

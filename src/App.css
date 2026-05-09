@@ -531,108 +531,6 @@
   font-size: 16px; color: var(--text-dim); max-width: 680px; line-height: 1.8;
 }
 
-/* ── Services ── */
-.service-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-  margin-bottom: 48px;
-}
-.service-card {
-  background: var(--bg2); border: 1px solid var(--border);
-  border-radius: 8px; padding: 24px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-  display: flex; flex-direction: column; gap: 14px;
-}
-.service-card-featured {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent), 0 2px 8px rgba(0,0,0,0.08);
-}
-.service-card-top { display: flex; flex-direction: column; gap: 6px; }
-.service-tag {
-  display: inline-block;
-  font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase;
-  color: var(--text-dim); border: 1px solid var(--border);
-  padding: 2px 7px; border-radius: 2px; width: fit-content;
-}
-.service-tag-accent {
-  color: var(--accent); border-color: var(--accent);
-  background: rgba(29,78,216,0.05);
-}
-.service-name {
-  font-size: 18px; font-weight: 600; color: var(--text-bright); line-height: 1.2;
-}
-.service-desc {
-  font-size: 14px; color: var(--text-dim); line-height: 1.7;
-}
-.service-includes {
-  list-style: none; padding: 0; margin: 0;
-  display: flex; flex-direction: column; gap: 6px; flex: 1;
-}
-.service-includes li {
-  font-size: 13px; color: var(--text-dim); padding-left: 14px; position: relative; line-height: 1.5;
-}
-.service-includes li::before {
-  content: '—'; position: absolute; left: 0; color: var(--border);
-}
-.service-footer {
-  padding-top: 14px; border-top: 1px solid var(--border);
-}
-.service-turnaround {
-  font-size: 12px; color: var(--text-dim); letter-spacing: 0.04em;
-}
-
-/* Mail-in block */
-.service-mailin {
-  background: var(--bg3); border: 1px solid var(--border);
-  border-radius: 8px; padding: 28px 32px;
-  margin-bottom: 40px;
-}
-.mailin-header {
-  display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px;
-}
-.mailin-title {
-  font-size: 20px; font-weight: 600; color: var(--text-bright);
-}
-.mailin-body {
-  display: flex; flex-direction: column; gap: 14px;
-}
-.mailin-body p {
-  font-size: 14px; color: var(--text-dim); line-height: 1.8; max-width: 680px;
-}
-.mailin-steps {
-  display: flex; flex-direction: column; gap: 12px;
-  margin-top: 8px; padding-top: 20px; border-top: 1px solid var(--border);
-}
-.mailin-step {
-  display: flex; align-items: baseline; gap: 16px;
-  font-size: 14px; color: var(--text-dim);
-}
-.mailin-step-num {
-  font-size: 11px; letter-spacing: 0.1em; color: var(--text-dim);
-  opacity: 0.5; min-width: 22px;
-}
-.mailin-step strong { color: var(--text-bright); }
-
-/* Service CTA */
-.service-cta {
-  display: flex; align-items: center; gap: 20px;
-  padding: 24px 28px; background: var(--bg2);
-  border: 1px solid var(--border); border-radius: 8px;
-}
-.service-cta p { font-size: 15px; color: var(--text-dim); flex: 1; }
-.cta-btn {
-  display: inline-block;
-  font-family: var(--font); font-size: 13px; font-weight: 600;
-  letter-spacing: 0.05em; color: var(--bg);
-  background: var(--text-bright); border: 1px solid var(--text-bright);
-  padding: 10px 22px; border-radius: 4px; text-decoration: none;
-  transition: all 0.15s; white-space: nowrap;
-}
-.cta-btn:hover {
-  background: var(--accent); border-color: var(--accent);
-}
-
 /* ── About ── */
 .about-body {
   display: grid;
@@ -770,12 +668,6 @@
 }
 .la-notice p { font-size: 13px; color: var(--text-dim); line-height: 1.6; }
 
-.tab-link-alpha { border-color: var(--purple) !important; }
-.tab-alpha-badge {
-  font-size: 10px; color: var(--purple); font-weight: 700;
-  margin-left: 3px; letter-spacing: 0.05em;
-}
-
 /* ── Responsive: tablet ── */
 @media (max-width: 900px) {
   .calc-grid { grid-template-columns: 1fr; }
@@ -812,12 +704,6 @@
   .page-title { font-size: 26px; }
   .page-lead { font-size: 14px; }
   .page-hero { margin-bottom: 32px; padding-bottom: 24px; }
-
-  /* Services */
-  .service-grid { grid-template-columns: 1fr; gap: 12px; }
-  .service-card { padding: 18px; }
-  .service-mailin { padding: 20px; }
-  .service-cta { flex-direction: column; align-items: flex-start; gap: 14px; }
 
   /* About */
   .about-graf { font-size: 14px; }
