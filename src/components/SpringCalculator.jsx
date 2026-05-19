@@ -63,22 +63,91 @@ const SUSPENSION_TYPES = [
   },
 ]
 
+// LR at wheel-travel fraction t (0..1), accounting for active preset or custom progression
+function lrAtTravelFrac(t, preset, customProg, geoLR) {
+  if (!geoLR) return geoLR
+  if (customProg !== null) {
+    return geoLR * (1 + (customProg / 200) * (1 - 2 * t))
+  }
+  if (preset) {
+    return geoLR * getLrAtTravel(preset, t) / averageLr(preset)
+  }
+  return geoLR
+}
+
+// Given wheel sag fraction, return corresponding shock displacement (mm)
+// by integrating 1/LR from 0 to the wheel sag position.
+function shockDispFromWheelSag(wheelSagPct, preset, customProg, geoLR, wheelTravel, N = 100) {
+  if (!geoLR || wheelSagPct <= 0) return 0
+  const wheelTarget = wheelSagPct * wheelTravel
+  const dx = wheelTarget / N
+  let shockDisp = 0
+  for (let i = 0; i < N; i++) {
+    const t = ((i + 0.5) / N) * wheelSagPct
+    shockDisp += dx / lrAtTravelFrac(t, preset, customProg, geoLR)
+  }
+  return shockDisp
+}
+
+// Given shock sag fraction (of stroke), return corresponding wheel displacement (mm)
+// by integrating up the wheel-travel axis until shock displacement reaches target.
+function wheelDispFromShockSag(shockSagPct, preset, customProg, geoLR, wheelTravel, shockStroke, N = 200) {
+  if (!geoLR || shockSagPct <= 0) return 0
+  const shockTarget = shockSagPct * shockStroke
+  const dx = wheelTravel / N
+  let shockAcc = 0
+  for (let i = 0; i < N; i++) {
+    const t = (i + 0.5) / N
+    const lr = lrAtTravelFrac(t, preset, customProg, geoLR)
+    const newAcc = shockAcc + dx / lr
+    if (newAcc >= shockTarget) {
+      const frac = (shockTarget - shockAcc) / (newAcc - shockAcc)
+      return (i + frac) * dx
+    }
+    shockAcc = newAcc
+  }
+  return wheelTravel
+}
+
+// Resolve user's sag input (shock or wheel) into all four representations
+function resolveSag(sagInput, sagMode, preset, customProg, geoLR, wheelTravel, shockStroke) {
+  if (!geoLR || !wheelTravel || !shockStroke) {
+    return { wheelSagPct: 0, shockSagPct: 0, wheelSagMm: 0, shockSagMm: 0 }
+  }
+  if (sagMode === 'wheel') {
+    const wheelSagPct = sagInput
+    const wheelSagMm = wheelSagPct * wheelTravel
+    const shockSagMm = shockDispFromWheelSag(wheelSagPct, preset, customProg, geoLR, wheelTravel)
+    const shockSagPct = shockSagMm / shockStroke
+    return { wheelSagPct, shockSagPct, wheelSagMm, shockSagMm }
+  } else {
+    const shockSagPct = sagInput
+    const shockSagMm = shockSagPct * shockStroke
+    const wheelSagMm = wheelDispFromShockSag(shockSagPct, preset, customProg, geoLR, wheelTravel, shockStroke)
+    const wheelSagPct = wheelSagMm / wheelTravel
+    return { wheelSagPct, shockSagPct, wheelSagMm, shockSagMm }
+  }
+}
+
 // Numerically integrate shock displacement through the stroke using variable LR,
-// then compute force at wheel at each travel point.
-function computeForceCurve(preset, geoLR, wheelTravel, sagPct, shockStroke, riderKg, rearFrac, N = 20) {
+// then compute force at wheel at each travel point. Spring rate derived from
+// instantaneous LR at sag and shock displacement at sag (correct physics).
+function computeForceCurve(preset, customProg, geoLR, wheelTravel, shockStroke, wheelSagPct, riderKg, rearFrac, N = 20) {
   if (!geoLR) return Array(N + 1).fill(0)
-  const mod = preset ? getLrAtTravel(preset, sagPct) / averageLr(preset) : 1.0
-  const k = springRateNmm(riderKg, rearFrac, geoLR * mod, sagPct, shockStroke)
+  const lrAtSag = lrAtTravelFrac(wheelSagPct, preset, customProg, geoLR)
+  const shockSagMm = shockDispFromWheelSag(wheelSagPct, preset, customProg, geoLR, wheelTravel)
+  if (!shockSagMm) return Array(N + 1).fill(0)
+  const k = (riderKg * G * rearFrac * lrAtSag) / shockSagMm // N/mm
   const pts = []
   let shockDisp = 0
   for (let i = 0; i <= N; i++) {
     if (i > 0) {
       const t_mid = (i - 0.5) / N
-      const lr_t = preset ? geoLR * getLrAtTravel(preset, t_mid) / averageLr(preset) : geoLR
+      const lr_t = lrAtTravelFrac(t_mid, preset, customProg, geoLR)
       shockDisp += (wheelTravel / N) / lr_t
     }
-    const lr_t = preset ? geoLR * getLrAtTravel(preset, i / N) / averageLr(preset) : geoLR
-    pts.push(k ? Math.round(k * shockDisp / lr_t) : 0)
+    const lr_t = lrAtTravelFrac(i / N, preset, customProg, geoLR)
+    pts.push(Math.round(k * shockDisp / lr_t))
   }
   return pts
 }
@@ -145,7 +214,8 @@ function InputField({ label, value, onChange, unit, min, max, step, tip }) {
 
 export default function SpringCalculator() {
   const [vals, setVals] = useState(DEFAULTS)
-  const [sagPct, setSagPct] = useState(0.30)
+  const [sagPct, setSagPct] = useState(0.30) // raw slider value (interpreted via sagMode)
+  const [sagMode, setSagMode] = useState('shock') // 'shock' | 'wheel'
   const [linkageId, setLinkageId] = useState(null)
   const [weightLbs, setWeightLbs] = useState(true)
   const [customProg, setCustomProg] = useState(null) // null = follow preset
@@ -157,24 +227,46 @@ export default function SpringCalculator() {
 
   const selectedPreset = LINKAGE_PRESETS.find((p) => p.id === linkageId)
 
+  // Switching modes converts the slider value so the physical sag is preserved
+  const switchSagMode = (newMode) => {
+    if (newMode === sagMode) return
+    const geoLR = leverageRatio(vals.wheelTravel, vals.shockStroke)
+    const preset = LINKAGE_PRESETS.find((p) => p.id === linkageId)
+    const current = resolveSag(sagPct, sagMode, preset, customProg, geoLR, vals.wheelTravel, vals.shockStroke)
+    const newVal = newMode === 'wheel' ? current.wheelSagPct : current.shockSagPct
+    setSagMode(newMode)
+    setSagPct(Math.max(SAG_MIN / 100, Math.min(SAG_MAX / 100, newVal)))
+  }
+
   const calc = useMemo(() => {
     const riderKg = vals.riderWeightKg
     const rearFrac = vals.rearPct / 100
     const geoLR = leverageRatio(vals.wheelTravel, vals.shockStroke)
     const preset = LINKAGE_PRESETS.find((p) => p.id === linkageId)
-    // If user entered a custom progression %, compute linkageMod from a linear curve model.
-    // For a linear curve with P% progression, LR at sag = 1 + (P/200)*(1 - 2*sagPct), avg = 1.0
-    const linkageMod = customProg !== null
-      ? 1 + (customProg / 200) * (1 - 2 * sagPct)
-      : preset ? getLrAtTravel(preset, sagPct) / averageLr(preset) : 1.0
-    const effectiveLR = geoLR ? geoLR * linkageMod : null
-    const nmm = springRateNmm(riderKg, rearFrac, effectiveLR, sagPct, vals.shockStroke)
+
+    // Resolve user's sag input into both shock and wheel representations
+    const userSag = resolveSag(sagPct, sagMode, preset, customProg, geoLR, vals.wheelTravel, vals.shockStroke)
+
+    // LR at sag evaluated at wheel position (correct physics)
+    const lrAtSag = lrAtTravelFrac(userSag.wheelSagPct, preset, customProg, geoLR)
+    const linkageMod = geoLR ? lrAtSag / geoLR : 1.0
+    const effectiveLR = lrAtSag
+
+    // Spring rate: k = F_wheel × LR_at_sag / shock_disp_at_sag
+    const nmm = (geoLR && userSag.shockSagMm)
+      ? (riderKg * G * rearFrac * lrAtSag) / userSag.shockSagMm
+      : null
     const lbin = nmm ? nmmToLbin(nmm) : null
     const rearForceN = riderKg * G * rearFrac
 
     const chartPresets = LINKAGE_PRESETS.filter(p => CHART_PRESET_IDS.includes(p.id))
-    const neutralPts = computeForceCurve(null, geoLR, vals.wheelTravel, sagPct, vals.shockStroke, riderKg, rearFrac)
-    const presetPts = chartPresets.map(p => computeForceCurve(p, geoLR, vals.wheelTravel, sagPct, vals.shockStroke, riderKg, rearFrac))
+    // For each comparison curve, resolve sag using that preset's own LR curve
+    const neutralSag = resolveSag(sagPct, sagMode, null, null, geoLR, vals.wheelTravel, vals.shockStroke)
+    const neutralPts = computeForceCurve(null, null, geoLR, vals.wheelTravel, vals.shockStroke, neutralSag.wheelSagPct, riderKg, rearFrac)
+    const presetPts = chartPresets.map(p => {
+      const pSag = resolveSag(sagPct, sagMode, p, null, geoLR, vals.wheelTravel, vals.shockStroke)
+      return computeForceCurve(p, null, geoLR, vals.wheelTravel, vals.shockStroke, pSag.wheelSagPct, riderKg, rearFrac)
+    })
 
     const curveData = Array.from({ length: 21 }, (_, i) => {
       const t = i / 20
@@ -211,10 +303,11 @@ export default function SpringCalculator() {
       parseFloat((Math.max(...allLRs) * 1.04).toFixed(2)),
     ]
 
-    return { riderKg, geoLR, effectiveLR, linkageMod, rearForceN, nmm, lbin, curveData, yDomain, yDomainClamped, lrDomain }
-  }, [vals, sagPct, linkageId, customProg])
+    return { riderKg, geoLR, effectiveLR, linkageMod, rearForceN, nmm, lbin, curveData, yDomain, yDomainClamped, lrDomain, userSag }
+  }, [vals, sagPct, sagMode, linkageId, customProg])
 
-  const zone = getSagZone(sagPct)
+  // Zone is always classified against shock sag conventions (XC/Trail/Enduro/DH)
+  const zone = getSagZone(calc.userSag.shockSagPct)
   const biasZone = getBiasZone(vals.rearPct)
   const activePreset = LINKAGE_PRESETS.find((p) => p.id === linkageId)
 
@@ -263,16 +356,22 @@ export default function SpringCalculator() {
           </div>
 
           {/* Sag — compact inline */}
-          <div className="input-group-header tune-header">
-            Target Sag
-            <InfoIcon text="Sag is how much your suspension compresses under your weight alone, expressed as % of wheel travel. More sag = softer feel but less travel reserve. Coil shocks are typically run at 25-33%." width={260} />
+          <div className="input-group-header tune-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>
+              Target Sag
+              <InfoIcon text={`Sag is how much your suspension compresses under your weight alone. By default measured at the shock o-ring (the universal convention). Toggle to wheel sag if you want to target a specific wheel-travel position — useful for cross-bike comparisons where progression differs.\n\nCoil shocks are typically run at 25-33% shock sag. On a progressive bike that corresponds to a few % more at the wheel.`} width={290} />
+            </span>
+            <div className="unit-pill">
+              <button className={`unit-pill-btn ${sagMode === 'shock' ? 'unit-pill-active' : ''}`} onClick={() => switchSagMode('shock')}>shock</button>
+              <button className={`unit-pill-btn ${sagMode === 'wheel' ? 'unit-pill-active' : ''}`} onClick={() => switchSagMode('wheel')}>wheel</button>
+            </div>
           </div>
           <div className="sag-compact">
             <div className="sag-compact-top">
               <span className="sag-compact-val" style={{ color: zone.color }}>{Math.round(sagPct * 100)}%</span>
               <span className="sag-compact-zone" style={{ color: zone.color }}>{zone.label}</span>
               <span className="sag-compact-mm">
-                {Math.round(vals.shockStroke * sagPct)} mm shock · {Math.round(vals.wheelTravel * sagPct)} mm wheel
+                {Math.round(calc.userSag.shockSagMm)} mm shock ({Math.round(calc.userSag.shockSagPct * 100)}%) · {Math.round(calc.userSag.wheelSagMm)} mm wheel ({Math.round(calc.userSag.wheelSagPct * 100)}%)
               </span>
             </div>
             <div className="sag-track-wrap">
@@ -440,39 +539,30 @@ export default function SpringCalculator() {
               </span>
             )}
           </div>
-          <div className="linkage-pills">
-            <div
-              className={`linkage-pill ${!linkageId ? 'linkage-pill-active' : ''}`}
-              onClick={() => { setLinkageId(null); setCustomProg(null) }}
-            >
-              <span className="lp-dot" style={{ background: 'var(--text-dim)' }} />
-              <div className="lp-text">
-                <span className="lp-name" style={{ color: !linkageId ? 'var(--text-bright)' : undefined }}>Geometric only (no correction)</span>
-                <span className="lp-sub">raw travel ÷ stroke, 0% progression assumed</span>
+          <div className="linkage-tabs">
+            <Tip text="Raw travel ÷ stroke with no progression assumed — same baseline as Fox and MRP calculators. Use this when you don't know your bike's linkage type or you want the geometric-only number." width={280}>
+              <div
+                className={`linkage-tab ${!linkageId ? 'linkage-tab-active' : ''}`}
+                onClick={() => { setLinkageId(null); setCustomProg(null) }}
+              >
+                <span className="lt-dot" style={{ background: 'var(--text-dim)' }} />
+                <span className="lt-name">Geometric</span>
               </div>
-              <span className="lp-mod" style={{ color: 'var(--text-dim)' }}>0%</span>
-            </div>
+            </Tip>
             {SUSPENSION_TYPES.map((type) => {
               const p = LINKAGE_PRESETS.find(pr => pr.id === type.presetId)
               if (!p) return null
-              const mod = getLrAtTravel(p, sagPct) / averageLr(p)
-              const modStr = (mod > 1 ? '+' : '') + Math.round((mod - 1) * 100) + '%'
               const active = linkageId === p.id
+              const shortLabel = type.label.split(' /')[0].split(' —')[0]
               return (
-                <Tip key={p.id} text={type.tip} width={280}>
+                <Tip key={p.id} text={`${type.sublabel}\n\n${type.tip}`} width={300}>
                   <div
-                    className={`linkage-pill ${active ? 'linkage-pill-active' : ''}`}
+                    className={`linkage-tab ${active ? 'linkage-tab-active' : ''}`}
                     style={active ? { borderColor: p.color } : {}}
                     onClick={() => { setLinkageId(active ? null : p.id); setCustomProg(null) }}
                   >
-                    <span className="lp-dot" style={{ background: p.color }} />
-                    <div className="lp-text">
-                      <span className="lp-name" style={{ color: active ? p.color : undefined }}>{type.label}</span>
-                      <span className="lp-sub">{type.sublabel}</span>
-                    </div>
-                    <span className="lp-mod" style={{ color: mod > 1.01 ? '#f0b429' : mod < 0.99 ? '#00c97a' : 'var(--text-dim)' }}>
-                      {modStr}
-                    </span>
+                    <span className="lt-dot" style={{ background: p.color }} />
+                    <span className="lt-name" style={active ? { color: p.color } : {}}>{shortLabel}</span>
                   </div>
                 </Tip>
               )
@@ -507,9 +597,9 @@ export default function SpringCalculator() {
                       }}
                       labelFormatter={(l) => `${l}mm travel`}
                     />
-                    <ReferenceLine x={Math.round(vals.wheelTravel * sagPct)}
+                    <ReferenceLine x={Math.round(calc.userSag.wheelSagMm)}
                       stroke={zone.color} strokeDasharray="4 2"
-                      label={{ value: `${Math.round(sagPct * 100)}% sag`, fill: zone.color, fontSize: 9, position: 'insideTopRight' }} />
+                      label={{ value: `sag · ${Math.round(calc.userSag.wheelSagPct * 100)}% wheel`, fill: zone.color, fontSize: 9, position: 'insideTopRight' }} />
                     <Line type="monotone" dataKey="force_neutral" dot={false}
                       stroke={!linkageId ? zone.color : '#bbb'} strokeWidth={!linkageId ? 2 : 1} strokeOpacity={!linkageId ? 1 : 0.2} />
                     {LINKAGE_PRESETS.filter(p => CHART_PRESET_IDS.includes(p.id)).map(p => {
@@ -551,9 +641,9 @@ export default function SpringCalculator() {
                       }}
                       labelFormatter={(l) => `${l}mm travel`}
                     />
-                    <ReferenceLine x={Math.round(vals.wheelTravel * sagPct)}
+                    <ReferenceLine x={Math.round(calc.userSag.wheelSagMm)}
                       stroke={zone.color} strokeDasharray="4 2"
-                      label={{ value: `${Math.round(sagPct * 100)}% sag`, fill: zone.color, fontSize: 9, position: 'insideTopRight' }} />
+                      label={{ value: `sag · ${Math.round(calc.userSag.wheelSagPct * 100)}% wheel`, fill: zone.color, fontSize: 9, position: 'insideTopRight' }} />
                     <Line type="monotone" dataKey="lr_neutral" dot={false}
                       stroke={!linkageId ? zone.color : '#bbb'} strokeWidth={!linkageId ? 2 : 1} strokeOpacity={!linkageId ? 1 : 0.2} />
                     {LINKAGE_PRESETS.filter(p => CHART_PRESET_IDS.includes(p.id)).map(p => {

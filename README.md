@@ -1,4 +1,4 @@
-# LinkageLab
+# Solitaire Dynamics — Spring Rate Calculator
 
 **Coil spring rate calculator and suspension kinematics tools for mountain bikes.**
 

@@ -29,9 +29,9 @@ export default function AboutPage() {
           </p>
 
           <p className="about-graf">
-            I built <strong>LinkageLab</strong> because I saw too many riders
-            on the wrong spring or being told &quot;just run 30% sag&quot;. The tool
-            is free and improving all the time.
+            The spring calculator on this site is free and improving all the
+            time. I built it because I saw too many riders on the wrong spring
+            or being told &quot;just run 30% sag&quot; with no reasoning behind it.
           </p>
 
           <p className="about-graf">
@@ -54,7 +54,7 @@ export default function AboutPage() {
             </div>
             <div className="about-stat">
               <span className="about-stat-val">Free, open to everyone</span>
-              <span className="about-stat-label">LinkageLab</span>
+              <span className="about-stat-label">Spring calculator</span>
             </div>
           </div>
         </div>
@@ -67,7 +67,7 @@ export default function AboutPage() {
   
           <div className="about-sidebar-block">
             <span className="about-sidebar-label">Tools</span>
-            <span className="about-sidebar-val">LinkageLab · Linkage Analysis</span>
+            <span className="about-sidebar-val">Spring Calculator · Linkage Analysis</span>
           </div>
           <div className="about-sidebar-block">
             <span className="about-sidebar-label">Instagram</span>

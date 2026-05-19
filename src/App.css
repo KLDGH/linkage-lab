@@ -38,47 +38,6 @@
   box-shadow: 0 1px 3px rgba(0,0,0,0.07);
 }
 
-/* ── Tools bar (logo + tabs in one row) ── */
-.tools-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 32px;
-}
-.tools-bar-left {
-  display: flex; align-items: center; gap: 10px; flex-shrink: 0;
-}
-.tools-logo { font-size: 18px; font-weight: 600; letter-spacing: 0.12em; color: var(--text-bright); }
-.header-badge {
-  font-size: 10px; letter-spacing: 0.15em;
-  background: var(--text-bright); border: 1px solid var(--text-bright);
-  color: var(--bg); padding: 3px 8px; border-radius: 3px;
-}
-
-/* ── Tab Nav ── */
-.tab-nav {
-  display: flex; gap: 6px;
-}
-.tab-link {
-  color: var(--text-dim); text-decoration: none;
-  font-size: 12px; letter-spacing: 0.05em; font-weight: 500;
-  padding: 7px 16px; border-radius: 4px;
-  border: 1px solid var(--border);
-  background: var(--bg2);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.07);
-  transition: all 0.15s; white-space: nowrap;
-}
-.tab-link:hover {
-  color: var(--text-bright);
-  border-color: var(--text-dim);
-  background: #fff;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-  transform: translateY(-1px);
-}
-
 /* ── Section ── */
 .calc-section { margin-bottom: 56px; }
 .section-header {
@@ -352,26 +311,23 @@
 .linkage-selector { }
 .card-title-note { font-weight: 400; color: var(--text-dim); margin-left: 6px; text-transform: none; letter-spacing: 0; font-size: 11px; }
 
-.linkage-pills {
-  display: flex; flex-direction: column; gap: 6px;
+/* Horizontal compact tab bar for suspension types */
+.linkage-tabs {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  margin-top: 4px;
 }
-/* Tip wrappers inside pills must fill the grid column */
-.linkage-pills .tip-host { display: flex; width: 100%; }
-.linkage-pill {
-  display: flex; align-items: center; gap: 10px;
-  padding: 12px 14px; border-radius: 4px;
+.linkage-tabs .tip-host { display: inline-flex; }
+.linkage-tab {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 7px 12px; border-radius: 5px;
   border: 1px solid var(--border); background: var(--bg);
-  cursor: pointer; transition: all 0.15s; width: 100%; overflow: hidden;
+  cursor: pointer; transition: all 0.15s;
+  font-size: 12px; line-height: 1; white-space: nowrap;
 }
-.linkage-pill:hover { border-color: var(--text-dim); background: var(--bg3); }
-.linkage-pill-active { background: var(--bg2); border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
-
-.lp-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-.lp-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
-.lp-name { font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.lp-feel { display: none; } /* moved to tooltip only */
-.lp-sub { font-size: 11px; color: var(--text-dim); opacity: 0.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.lp-mod { font-size: 12px; font-weight: 600; white-space: nowrap; margin-left: auto; padding-left: 8px; }
+.linkage-tab:hover { border-color: var(--text-dim); background: var(--bg3); }
+.linkage-tab-active { background: var(--bg2); border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); font-weight: 600; }
+.lt-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.lt-name { color: var(--text-bright); }
 
 /* ── Footer ── */
 .footer {
@@ -688,11 +644,6 @@
   .site-logo { font-size: 16px; }
   .site-nav { gap: 2px; }
   .site-nav-link { font-size: 12px; padding: 6px 10px; }
-
-  /* Tools bar */
-  .tools-bar { flex-wrap: wrap; gap: 10px; margin-bottom: 24px; }
-  .tools-logo { font-size: 15px; }
-  .tab-link { font-size: 11px; padding: 6px 10px; }
 
   /* Calculator */
   .chart-pair { grid-template-columns: 1fr; }
