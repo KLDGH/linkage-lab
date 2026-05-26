@@ -359,19 +359,22 @@
 .tip-host:hover::after { opacity: 1; }
 
 .info-icon {
-  font-size: 12px; color: var(--text-dim); margin-left: 5px;
-  cursor: default; opacity: 0.6; vertical-align: middle;
+  font-size: 13px; color: var(--text-bright); margin-left: 5px;
+  cursor: default; opacity: 0.85; vertical-align: middle;
 }
 .info-icon:hover { opacity: 1; color: var(--accent); }
 
 /* ── Sag compact ── */
 .sag-compact { margin-bottom: 4px; }
 .sag-compact-top {
-  display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; margin-bottom: 8px;
 }
 .sag-compact-val { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
 .sag-compact-zone { font-size: 13px; font-weight: 600; letter-spacing: 0.06em; }
-.sag-compact-mm { font-size: 11px; color: var(--text-dim); margin-left: auto; }
+.sag-compact-mm {
+  font-size: 11px; color: var(--text-dim);
+  width: 100%; margin-top: 2px;
+}
 
 .sag-track-wrap {
   position: relative; height: 7px; border-radius: 3px;

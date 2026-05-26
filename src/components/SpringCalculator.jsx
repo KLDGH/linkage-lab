@@ -431,10 +431,12 @@ export default function SpringCalculator() {
               Target Sag
               <InfoIcon text={`Sag is how much your suspension compresses under your weight alone. By default measured at the shock o-ring (the universal convention). Toggle to wheel sag if you want to target a specific wheel-travel position — useful for cross-bike comparisons where progression differs.\n\nCoil shocks are typically run at 25-33% shock sag. On a progressive bike that corresponds to a few % more at the wheel.`} width={290} />
             </span>
-            <div className="unit-pill">
-              <button className={`unit-pill-btn ${sagMode === 'shock' ? 'unit-pill-active' : ''}`} onClick={() => switchSagMode('shock')}>shock</button>
-              <button className={`unit-pill-btn ${sagMode === 'wheel' ? 'unit-pill-active' : ''}`} onClick={() => switchSagMode('wheel')}>wheel</button>
-            </div>
+            <Tip text={`Choose how the slider value is measured:\n\n• Shock — sag as % of shock stroke (the universal convention; what Fox, RockShox, and frame manufacturers reference)\n• Wheel — sag as % of wheel travel (a position-based reference, useful for comparing across bikes with different progression)\n\nOn most bikes the two are within a few % of each other. Switching modes converts the slider value so your physical sag position stays the same.`} width={300}>
+              <div className="unit-pill">
+                <button className={`unit-pill-btn ${sagMode === 'shock' ? 'unit-pill-active' : ''}`} onClick={() => switchSagMode('shock')}>shock</button>
+                <button className={`unit-pill-btn ${sagMode === 'wheel' ? 'unit-pill-active' : ''}`} onClick={() => switchSagMode('wheel')}>wheel</button>
+              </div>
+            </Tip>
           </div>
           <div className="sag-compact">
             <div className="sag-compact-top">
@@ -594,18 +596,6 @@ export default function SpringCalculator() {
             </div>
           </div>
 
-          {/* ── Explainer ── */}
-          <div style={{ marginTop: 18, padding: '10px 12px', background: 'rgba(255,255,255,0.025)', borderRadius: 6, border: '1px solid var(--border)', fontSize: 11, lineHeight: 1.65, color: 'var(--text-dim)' }}>
-            <div style={{ fontWeight: 600, color: 'var(--text-bright)', marginBottom: 5, fontSize: 11, letterSpacing: '0.01em' }}>
-              Why suspension type changes your spring rate
-            </div>
-            <p style={{ margin: 0 }}>
-              Your spring rate is set so the shock reaches your sag target under your weight. But most linkages have a <em>higher</em> leverage ratio early in the stroke — right where sag sits. That means the spring is working harder at sag than the simple travel÷stroke ratio suggests, so a stiffer spring is required.
-            </p>
-            <p style={{ margin: '6px 0 0' }}>
-              Selecting a type below applies a correction: it takes the LR at your exact sag point and divides by the travel average. DW-Link bikes need the biggest correction (+14%) because their LR drops most steeply in the first third of travel. High pivot and four-bar types need a moderate correction (+5–6%). Selecting nothing uses raw geometry only — the same assumption Fox and MRP calculators make.
-            </p>
-          </div>
 
           {/* ── Suspension Type Selector ── */}
           <div className="linkage-selector-header" style={{ marginTop: 18 }}>
@@ -659,7 +649,7 @@ export default function SpringCalculator() {
                   Spring Force at Wheel
                   <InfoIcon text={`Force your spring delivers at the rear wheel as it compresses. Yellow dashed line = your rear load.\n\nWhere they cross is your sag point. Y-axis is zoomed to that region so you can see clearly whether you're over or under-sprung.`} width={260} />
                 </div>
-                <ResponsiveContainer width="100%" height={220}>
+                <ResponsiveContainer width="100%" height={320}>
                   <LineChart data={calc.curveData} margin={{ top: 22, right: 12, left: 0, bottom: 16 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e8e4de" />
                     <XAxis dataKey="sagMm" tickFormatter={(v) => `${v}mm`}
@@ -702,7 +692,7 @@ export default function SpringCalculator() {
                   Your Leverage Curve · wheel/shock
                   <InfoIcon text={`LR = wheel travel ÷ shock travel at each point in the stroke.\n\nCounter-intuitive but important: a FALLING curve means PROGRESSIVE (rising-rate) suspension — the shock gets harder to compress deeper in travel, resisting bottom-out. A RISING curve is digressive (less support deeper in travel). Flat = linear.\n\nThe "Unknown" baseline is flat because without linkage shape data we can only use your overall geometry ratio.`} width={290} />
                 </div>
-                <ResponsiveContainer width="100%" height={220}>
+                <ResponsiveContainer width="100%" height={320}>
                   <LineChart data={calc.curveData} margin={{ top: 22, right: 12, left: 0, bottom: 16 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e8e4de" />
                     <XAxis dataKey="sagMm" tickFormatter={(v) => `${v}mm`}
@@ -740,6 +730,19 @@ export default function SpringCalculator() {
                 </div>
               </div>
 
+            </div>
+
+            {/* ── Explainer below charts ── */}
+            <div style={{ marginTop: 18, padding: '12px 14px', background: 'rgba(255,255,255,0.025)', borderRadius: 6, border: '1px solid var(--border)', fontSize: 12, lineHeight: 1.7, color: 'var(--text-dim)' }}>
+              <div style={{ fontWeight: 600, color: 'var(--text-bright)', marginBottom: 6, fontSize: 12, letterSpacing: '0.01em' }}>
+                Why suspension type changes your spring rate
+              </div>
+              <p style={{ margin: 0 }}>
+                Your spring rate is set so the shock reaches your sag target under your weight. But most linkages have a <em>higher</em> leverage ratio early in the stroke — right where sag sits. That means the spring is working harder at sag than the simple travel÷stroke ratio suggests, so a stiffer spring is required.
+              </p>
+              <p style={{ margin: '8px 0 0' }}>
+                Selecting a type above applies a correction: it takes the LR at your exact sag point and divides by the travel average. DW-Link bikes need the biggest correction (+14%) because their LR drops most steeply in the first third of travel. High pivot and four-bar types need a moderate correction (+5–6%). Selecting nothing uses raw geometry only — the same assumption Fox and MRP calculators make.
+              </p>
             </div>
           </div>
 
