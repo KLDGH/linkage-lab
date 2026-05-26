@@ -212,18 +212,88 @@ function InputField({ label, value, onChange, unit, min, max, step, tip }) {
   )
 }
 
+// Read state from URL search params (falls back to nulls when missing/invalid)
+function parseUrlState() {
+  if (typeof window === 'undefined') return {}
+  const p = new URLSearchParams(window.location.search)
+  if (![...p.keys()].length) return {}
+  const num = (k) => { const v = parseFloat(p.get(k)); return isNaN(v) ? null : v }
+  const w = num('w'), t = num('t'), s = num('s'), b = num('b'), sag = num('sag'), prog = num('prog')
+  const link = p.get('link')
+  const mode = p.get('mode')
+  const u = p.get('u')
+  return {
+    vals: (w !== null || t !== null || s !== null || b !== null) ? {
+      riderWeightKg: w !== null ? w : DEFAULTS.riderWeightKg,
+      wheelTravel: t !== null ? t : DEFAULTS.wheelTravel,
+      shockStroke: s !== null ? s : DEFAULTS.shockStroke,
+      rearPct: b !== null ? b : DEFAULTS.rearPct,
+    } : null,
+    sagPct: sag !== null ? sag / 100 : null,
+    sagMode: mode === 'wheel' || mode === 'shock' ? mode : null,
+    linkageId: link && LINKAGE_PRESETS.some(pr => pr.id === link) ? link : null,
+    customProg: prog !== null ? prog : null,
+    weightLbs: u === 'lb' ? true : u === 'kg' ? false : null,
+  }
+}
+
+// Serialize current state to a URL search string
+function stateToQuery({ vals, sagPct, sagMode, linkageId, customProg, weightLbs }) {
+  const p = new URLSearchParams()
+  p.set('w', vals.riderWeightKg.toFixed(1))
+  p.set('t', String(vals.wheelTravel))
+  p.set('s', String(vals.shockStroke))
+  p.set('b', String(vals.rearPct))
+  p.set('sag', String(Math.round(sagPct * 100)))
+  p.set('mode', sagMode)
+  if (linkageId) p.set('link', linkageId)
+  if (customProg !== null) p.set('prog', String(customProg))
+  p.set('u', weightLbs ? 'lb' : 'kg')
+  return p.toString()
+}
+
 export default function SpringCalculator() {
-  const [vals, setVals] = useState(DEFAULTS)
-  const [sagPct, setSagPct] = useState(0.30) // raw slider value (interpreted via sagMode)
-  const [sagMode, setSagMode] = useState('shock') // 'shock' | 'wheel'
-  const [linkageId, setLinkageId] = useState(null)
-  const [weightLbs, setWeightLbs] = useState(true)
-  const [customProg, setCustomProg] = useState(null) // null = follow preset
+  const initial = useMemo(() => parseUrlState(), [])
+  const [vals, setVals] = useState(initial.vals ?? DEFAULTS)
+  const [sagPct, setSagPct] = useState(initial.sagPct ?? 0.30) // raw slider value (interpreted via sagMode)
+  const [sagMode, setSagMode] = useState(initial.sagMode ?? 'shock') // 'shock' | 'wheel'
+  const [linkageId, setLinkageId] = useState(initial.linkageId)
+  const [weightLbs, setWeightLbs] = useState(initial.weightLbs ?? true)
+  const [customProg, setCustomProg] = useState(initial.customProg) // null = follow preset
+  const [shareStatus, setShareStatus] = useState('idle') // idle | copied
 
   const set = (k) => (v) => setVals((p) => ({ ...p, [k]: v }))
   const displayWeight = (kg) => weightLbs ? Math.round(kg * 2.20462 * 10) / 10 : Math.round(kg * 10) / 10
   const toKg = (v) => weightLbs ? v / 2.20462 : v
   const wUnit = weightLbs ? 'lbs' : 'kg'
+
+  // Sync state → URL (debounced so dragging sliders doesn't spam history)
+  useEffect(() => {
+    const id = setTimeout(() => {
+      const query = stateToQuery({ vals, sagPct, sagMode, linkageId, customProg, weightLbs })
+      window.history.replaceState(null, '', `${window.location.pathname}?${query}`)
+    }, 200)
+    return () => clearTimeout(id)
+  }, [vals, sagPct, sagMode, linkageId, customProg, weightLbs])
+
+  // Copy current URL to clipboard with brief "copied" feedback
+  const copyShareLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      setShareStatus('copied')
+      setTimeout(() => setShareStatus('idle'), 1800)
+    } catch {
+      // Fallback for old browsers: select-all-and-copy via temporary input
+      const ta = document.createElement('textarea')
+      ta.value = window.location.href
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+      setShareStatus('copied')
+      setTimeout(() => setShareStatus('idle'), 1800)
+    }
+  }
 
   const selectedPreset = LINKAGE_PRESETS.find((p) => p.id === linkageId)
 
@@ -486,9 +556,19 @@ export default function SpringCalculator() {
             </div>
             <div className="big-rate-zone" style={{ color: zone.color }}>{zone.label} setup</div>
             {calc.lbin && (
-              <div className="rate-nearest">
-                Nearest stock: <strong>{Math.round(calc.lbin / 25) * 25} lb/in</strong>
-                <InfoIcon text={"Spring rates are sold in 25 lb/in steps (Fox, RockShox) or 50 lb/in steps (Cane Creek).\n\nThe gap is bridgeable with preload — a few collar turns can shift your effective rate by 25–50 lb/in. That's why Cane Creek can sell in larger increments without leaving riders between springs.\n\nWhen in doubt, go to the next stiffer spring and back off with preload."} width={280} />
+              <div className="rate-nearest" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <span>
+                  Nearest stock: <strong>{Math.round(calc.lbin / 25) * 25} lb/in</strong>
+                  <InfoIcon text={"Spring rates are sold in 25 lb/in steps (Fox, RockShox) or 50 lb/in steps (Cane Creek).\n\nThe gap is bridgeable with preload — a few collar turns can shift your effective rate by 25–50 lb/in. That's why Cane Creek can sell in larger increments without leaving riders between springs.\n\nWhen in doubt, go to the next stiffer spring and back off with preload."} width={280} />
+                </span>
+                <Tip text="Copy a link that opens this calculator with your exact inputs — useful for sharing setups on forums or saving for later." width={240}>
+                  <button
+                    onClick={copyShareLink}
+                    style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: shareStatus === 'copied' ? 'var(--green, #00c97a)' : 'var(--text-dim)', background: 'none', border: '1px solid var(--border)', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap', letterSpacing: '0.05em', textTransform: 'uppercase' }}
+                  >
+                    {shareStatus === 'copied' ? '✓ Copied' : '↗ Share link'}
+                  </button>
+                </Tip>
               </div>
             )}
             {customProg !== null && (
