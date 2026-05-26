@@ -257,9 +257,9 @@ export default function SpringCalculator() {
   const [vals, setVals] = useState(initial.vals ?? DEFAULTS)
   const [sagPct, setSagPct] = useState(initial.sagPct ?? 0.30) // raw slider value (interpreted via sagMode)
   const [sagMode, setSagMode] = useState(initial.sagMode ?? 'shock') // 'shock' | 'wheel'
-  const [linkageId, setLinkageId] = useState(initial.linkageId)
+  const [linkageId, setLinkageId] = useState(initial.linkageId ?? null)
   const [weightLbs, setWeightLbs] = useState(initial.weightLbs ?? true)
-  const [customProg, setCustomProg] = useState(initial.customProg) // null = follow preset
+  const [customProg, setCustomProg] = useState(initial.customProg ?? null) // null = follow preset
   const [shareStatus, setShareStatus] = useState('idle') // idle | copied
 
   const set = (k) => (v) => setVals((p) => ({ ...p, [k]: v }))
