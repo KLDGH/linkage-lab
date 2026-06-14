@@ -723,6 +723,50 @@
 .learn-takeaway li { font-size: 12.5px; line-height: 1.6; color: var(--text-dim); }
 .learn-takeaway li strong { color: var(--text-bright); font-weight: 600; }
 
+/* Clicker playground (module 03) */
+.clicker-controls {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px;
+}
+.clicker-group {
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 8px; padding: 14px 16px;
+}
+.clicker-group-title {
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--text-dim); margin-bottom: 12px;
+}
+.clicker-slider {
+  border: 1px solid transparent; border-radius: 6px;
+  padding: 8px 10px; margin: 0 -10px; cursor: pointer; transition: border-color 0.15s;
+}
+.clicker-slider + .clicker-slider { margin-top: 4px; }
+.clicker-slider-active { background: var(--bg); }
+.clicker-slider-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+.clicker-abbr { font-size: 13px; font-weight: 700; font-family: var(--font-mono, monospace); letter-spacing: 0.04em; }
+.clicker-name { font-size: 12px; color: var(--text-dim); flex: 1; }
+.clicker-val { font-size: 12px; font-family: var(--font-mono, monospace); color: var(--text-bright); }
+
+.clicker-legend { font-size: 11px; color: var(--text-dim); margin-top: 8px; line-height: 1.5; }
+
+.clicker-readout { border-width: 1px; }
+.clicker-readout-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+.clicker-readout-abbr {
+  font-size: 12px; font-weight: 700; color: #fff;
+  font-family: var(--font-mono, monospace); letter-spacing: 0.04em;
+  padding: 3px 8px; border-radius: 4px;
+}
+.clicker-readout-name { font-size: 15px; font-weight: 600; color: var(--text-bright); }
+.clicker-readout-zone {
+  font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-dim); margin-left: auto;
+}
+.clicker-readout-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.clicker-readout-label {
+  font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--text-dim); display: block; margin-bottom: 5px;
+}
+.clicker-readout-grid p { font-size: 12.5px; line-height: 1.55; color: var(--text-dim); margin: 0; }
+
 /* ── Responsive: tablet ── */
 @media (max-width: 900px) {
   .calc-grid { grid-template-columns: 1fr; }
@@ -770,6 +814,8 @@
   .learn-readout { flex-direction: row; min-width: 0; gap: 24px; }
   .learn-controls { gap: 12px; }
   .learn-play-btn { margin-left: 0; }
+  .clicker-controls { grid-template-columns: 1fr; }
+  .clicker-readout-grid { grid-template-columns: 1fr; gap: 12px; }
 
   /* Footer */
   .footer { flex-direction: column; align-items: flex-start; gap: 8px; }
