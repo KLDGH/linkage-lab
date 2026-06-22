@@ -168,4 +168,13 @@ Requires Node 18+. Built with Vite + React + Recharts.
 
 ## License
 
-© 2026 Solitaire Dynamics. All rights reserved.
+[GNU AGPL-3.0-or-later](LICENSE) © 2026 Solitaire Dynamics
+
+You're free to use, study, modify, and share this code. The catch: if you run a
+modified version as a network service, the AGPL requires you to make your source
+available to its users under the same license. That keeps the tool open while
+preventing a closed commercial fork.
+
+The underlying physics, formulas, and kinematic models aren't owned by anyone —
+they're free for all to reimplement. This license covers the code, copy, and
+design of this particular implementation.
