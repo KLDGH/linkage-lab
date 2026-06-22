@@ -168,4 +168,4 @@ Requires Node 18+. Built with Vite + React + Recharts.
 
 ## License
 
-MIT
+© 2026 Solitaire Dynamics. All rights reserved.
