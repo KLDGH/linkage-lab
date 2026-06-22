@@ -1,6 +1,7 @@
 import BumpVelocity from '../components/learn/BumpVelocity'
 import Packing from '../components/learn/Packing'
 import Clickers from '../components/learn/Clickers'
+import CollapsibleSection from '../components/CollapsibleSection'
 
 // Each entry is one explainer. Add new modules here — they render in order,
 // numbered, so later concepts can build on earlier ones.
@@ -42,14 +43,10 @@ export default function LearnPage() {
       {MODULES.map((m) => {
         const C = m.Component
         return (
-          <section key={m.id} id={m.id} className="calc-section learn-section">
-            <div className="section-header">
-              <span className="section-tag">{m.num}</span>
-              <h2 className="section-title">{m.title}</h2>
-            </div>
+          <CollapsibleSection key={m.id} id={m.id} tag={m.num} title={m.title}>
             <p className="learn-subtitle">{m.subtitle}</p>
             <C />
-          </section>
+          </CollapsibleSection>
         )
       })}
     </div>

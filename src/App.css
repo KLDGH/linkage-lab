@@ -48,6 +48,54 @@
   border: 1px solid var(--border); padding: 2px 7px; border-radius: 2px;
 }
 .section-title { font-size: 19px; font-weight: 600; color: var(--text-bright); }
+
+/* ── Collapsible section (accordion) — one cohesive panel ── */
+.section-accordion {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--bg2);
+  margin-bottom: 24px;
+}
+/* The panel IS the surface, so the content cards inside drop their own
+   frames — no box-in-a-box. Tinted zones (e.g. the inputs column) keep
+   their background via their own !important rule. */
+.acc-body .card {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+}
+/* the primary inputs column keeps a distinct fill so it's obvious where you
+   type — a tinted zone, not a bordered card-in-a-box. */
+.acc-body .calc-inputs {
+  background: var(--bg3) !important;
+  border-radius: 8px !important;
+}
+/* header strip sits flush at the top of the panel, divided from the body
+   by its own bottom border — no gap. */
+.acc-header {
+  cursor: pointer; user-select: none;
+  margin-bottom: 0;
+  padding: 14px 18px;
+  background: var(--bg3);
+  border-bottom: 1px solid var(--border);
+  transition: background 0.14s, color 0.14s;
+}
+.acc-header:hover { background: var(--bg2); }
+.acc-header:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.acc-chevron {
+  margin-left: auto; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--text-dim);
+  transition: transform 0.2s ease, color 0.14s;
+}
+.acc-header:hover .section-title,
+.acc-header:hover .acc-chevron { color: var(--accent); }
+.section-accordion.collapsed .acc-chevron { transform: rotate(180deg); }
+/* collapsed: the header is the whole panel, so drop its divider */
+.section-accordion.collapsed .acc-header { border-bottom: none; }
+.acc-body { padding: 18px; }
 .unit-pill {
   display: flex; border: 1px solid var(--border); border-radius: 3px; overflow: hidden;
 }

@@ -382,12 +382,6 @@ export default function SpringCalculator() {
   const activePreset = LINKAGE_PRESETS.find((p) => p.id === linkageId)
 
   return (
-    <section className="calc-section">
-      <div className="section-header">
-        <span className="section-tag">01</span>
-        <h2 className="section-title">Spring Rate Calculator</h2>
-      </div>
-
       <div className="calc-grid">
 
         {/* ── Inputs ── */}
@@ -749,6 +743,5 @@ export default function SpringCalculator() {
         </div>
 
       </div>
-    </section>
   )
 }

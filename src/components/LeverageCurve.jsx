@@ -31,12 +31,7 @@ export default function LeverageCurve() {
   const focusedPreset = LINKAGE_PRESETS.find((p) => p.id === focused)
 
   return (
-    <section className="calc-section">
-      <div className="section-header">
-        <span className="section-tag">02</span>
-        <h2 className="section-title">Leverage Ratio Curves</h2>
-      </div>
-
+    <>
       <div className="leverage-layout">
 
         {/* ── Compact preset list ── */}
@@ -147,6 +142,6 @@ export default function LeverageCurve() {
           </div>
         </div>
       </div>
-    </section>
+    </>
   )
 }

@@ -6,8 +6,7 @@ export default function ContactPage() {
         <h1 className="page-title">Contact</h1>
         <p className="page-lead">
           Questions about a service, want to send us your suspension, or just
-          want to talk setup? Reach out. We typically respond within one
-          business day.
+          want to talk setup? Reach out.
         </p>
       </div>
 
@@ -57,8 +56,7 @@ export default function ContactPage() {
             <h3 className="contact-info-title">Mail-in inquiries</h3>
             <p className="contact-info-body">
               Email us first to confirm scope and get the current ship-to
-              address. Don&apos;t ship without confirming — we want to make sure
-              we can take the job before you pay for shipping.
+              address.
             </p>
           </div>
 

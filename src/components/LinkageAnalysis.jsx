@@ -41,13 +41,7 @@ const TT   = { background: '#1c1814', border: '1px solid #3a3530', fontFamily: '
 
 export default function LinkageAnalysis() {
   return (
-    <section className="calc-section">
-      <div className="section-header">
-        <span className="section-tag">03</span>
-        <h2 className="section-title">Linkage Analysis</h2>
-        <span className="header-badge" style={{ background: 'var(--purple)', border: 'none' }}>ALPHA</span>
-      </div>
-
+    <>
       <p className="la-intro">
         Full kinematic analysis from pivot coordinates — leverage ratio, anti-squat, pedal kickback,
         and brake rise across the travel. Early alpha. Bikes being added one at a time.
@@ -155,6 +149,6 @@ export default function LinkageAnalysis() {
         </p>
       </div>
 
-    </section>
+    </>
   )
 }

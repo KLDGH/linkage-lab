@@ -13,50 +13,22 @@ export default function AboutPage() {
         <div className="about-main">
 
           <p className="about-graf about-graf-lead">
-            Solitaire Dynamics is one person. I tune suspension and build tools —
-            the tools when the ones that exist aren&apos;t good enough, or when
-            someone built something great and then disappeared.
+            Solitaire Dynamics is a one-person suspension shop. The work is
+            spring rate, valving, shim stacks, and fluid selection, set for a
+            specific rider and bike.
           </p>
 
           <p className="about-graf">
-            Tuning means spring rate, shim stack, valve configuration, fluid
-            weight. The mechanical work — pulling shocks apart, replacing seals —
-            is how you execute the tune. I got into this properly in the PNW,
-            where short seasons mean a bad setup costs you riding days you
-            can&apos;t get back. A damper rebuilt to factory spec won&apos;t perform
-            if the valving was tuned for someone 40 lbs lighter, or the spring
-            rate was never right to begin with. Those variables compound.
+            The spring rate calculator here is free. It exposes its assumptions,
+            takes rear weight bias as a direct input, and corrects leverage ratio
+            at the sag point. Every number it returns is one you can check.
           </p>
 
           <p className="about-graf">
-            The spring calculator on this site is free and improving all the
-            time. I built it because I saw too many riders on the wrong spring
-            or being told &quot;just run 30% sag&quot; with no reasoning behind it.
+            The linkage analysis tool is in development, calibrated against
+            measured bikes as they are added. It computes leverage ratio,
+            anti-squat, and pedal kickback from pivot coordinates.
           </p>
-
-          <p className="about-graf">
-            The linkage analysis tool is newer — still early, still being
-            calibrated against real bike data. The goal is something close
-            to what Linkage Design did before it went dark: full kinematic
-            analysis from actual pivot geometry, not heuristics.
-          </p>
-
-          <div className="about-divider" />
-
-          <div className="about-stats">
-            <div className="about-stat">
-              <span className="about-stat-val">Fox · RockShox · Öhlins · Cane Creek</span>
-              <span className="about-stat-label">Brands serviced</span>
-            </div>
-            <div className="about-stat">
-              <span className="about-stat-val">LA + Mail-in</span>
-              <span className="about-stat-label">Service options</span>
-            </div>
-            <div className="about-stat">
-              <span className="about-stat-val">Free, open to everyone</span>
-              <span className="about-stat-label">Spring calculator</span>
-            </div>
-          </div>
         </div>
 
         <div className="about-sidebar">
