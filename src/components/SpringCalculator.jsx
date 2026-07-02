@@ -222,6 +222,14 @@ function parseUrlState() {
   const link = p.get('link')
   const mode = p.get('mode')
   const u = p.get('u')
+  const curveRaw = p.get('curve')
+  let curve = null
+  if (curveRaw) {
+    const parts = curveRaw.split(',').map(Number)
+    if (parts.length === 3 && parts.every((n) => n > 0)) {
+      curve = { start: String(parts[0]), mid: String(parts[1]), end: String(parts[2]) }
+    }
+  }
   return {
     vals: (w !== null || t !== null || s !== null || b !== null) ? {
       riderWeightKg: w !== null ? w : DEFAULTS.riderWeightKg,
@@ -233,12 +241,13 @@ function parseUrlState() {
     sagMode: mode === 'wheel' || mode === 'shock' ? mode : null,
     linkageId: link && LINKAGE_PRESETS.some(pr => pr.id === link) ? link : null,
     customProg: prog !== null ? prog : null,
+    curve,
     weightLbs: u === 'lb' ? true : u === 'kg' ? false : null,
   }
 }
 
 // Serialize current state to a URL search string
-function stateToQuery({ vals, sagPct, sagMode, linkageId, customProg, weightLbs }) {
+function stateToQuery({ vals, sagPct, sagMode, linkageId, customProg, customPreset, weightLbs }) {
   const p = new URLSearchParams()
   p.set('w', vals.riderWeightKg.toFixed(1))
   p.set('t', String(vals.wheelTravel))
@@ -248,6 +257,7 @@ function stateToQuery({ vals, sagPct, sagMode, linkageId, customProg, weightLbs 
   p.set('mode', sagMode)
   if (linkageId) p.set('link', linkageId)
   if (customProg !== null) p.set('prog', String(customProg))
+  if (customPreset) p.set('curve', customPreset.points.map((pt) => pt.lr).join(','))
   p.set('u', weightLbs ? 'lb' : 'kg')
   return p.toString()
 }
@@ -260,7 +270,25 @@ export default function SpringCalculator() {
   const [linkageId, setLinkageId] = useState(initial.linkageId ?? null)
   const [weightLbs, setWeightLbs] = useState(initial.weightLbs ?? true)
   const [customProg, setCustomProg] = useState(initial.customProg ?? null) // null = follow preset
+  const [curveInput, setCurveInput] = useState(initial.curve ?? { start: '', mid: '', end: '' })
   const [shareStatus, setShareStatus] = useState('idle') // idle | copied
+
+  // A user-entered 3-point leverage curve becomes a preset with points at
+  // 0/50/100% travel. Only the shape (ratio through the curve) is used, so the
+  // absolute LR values can be read straight off a published graph.
+  const customPreset = useMemo(() => {
+    const s = parseFloat(curveInput.start), m = parseFloat(curveInput.mid), e = parseFloat(curveInput.end)
+    if (s > 0 && m > 0 && e > 0) {
+      return { id: 'custom', points: [{ t: 0, lr: s }, { t: 0.5, lr: m }, { t: 1, lr: e }] }
+    }
+    return null
+  }, [curveInput])
+
+  const clearCurve = () => setCurveInput({ start: '', mid: '', end: '' })
+  const setCurveField = (field) => (raw) => {
+    setCurveInput((prev) => ({ ...prev, [field]: raw }))
+    if (raw !== '') { setLinkageId(null); setCustomProg(null) }
+  }
 
   const set = (k) => (v) => setVals((p) => ({ ...p, [k]: v }))
   const displayWeight = (kg) => weightLbs ? Math.round(kg * 2.20462 * 10) / 10 : Math.round(kg * 10) / 10
@@ -270,11 +298,11 @@ export default function SpringCalculator() {
   // Sync state → URL (debounced so dragging sliders doesn't spam history)
   useEffect(() => {
     const id = setTimeout(() => {
-      const query = stateToQuery({ vals, sagPct, sagMode, linkageId, customProg, weightLbs })
+      const query = stateToQuery({ vals, sagPct, sagMode, linkageId, customProg, customPreset, weightLbs })
       window.history.replaceState(null, '', `${window.location.pathname}?${query}`)
     }, 200)
     return () => clearTimeout(id)
-  }, [vals, sagPct, sagMode, linkageId, customProg, weightLbs])
+  }, [vals, sagPct, sagMode, linkageId, customProg, customPreset, weightLbs])
 
   // Copy current URL to clipboard with brief "copied" feedback
   const copyShareLink = async () => {
@@ -301,8 +329,9 @@ export default function SpringCalculator() {
   const switchSagMode = (newMode) => {
     if (newMode === sagMode) return
     const geoLR = leverageRatio(vals.wheelTravel, vals.shockStroke)
-    const preset = LINKAGE_PRESETS.find((p) => p.id === linkageId)
-    const current = resolveSag(sagPct, sagMode, preset, customProg, geoLR, vals.wheelTravel, vals.shockStroke)
+    const preset = customPreset || LINKAGE_PRESETS.find((p) => p.id === linkageId)
+    const effProg = customPreset ? null : customProg
+    const current = resolveSag(sagPct, sagMode, preset, effProg, geoLR, vals.wheelTravel, vals.shockStroke)
     const newVal = newMode === 'wheel' ? current.wheelSagPct : current.shockSagPct
     setSagMode(newMode)
     setSagPct(Math.max(SAG_MIN / 100, Math.min(SAG_MAX / 100, newVal)))
@@ -312,13 +341,14 @@ export default function SpringCalculator() {
     const riderKg = vals.riderWeightKg
     const rearFrac = vals.rearPct / 100
     const geoLR = leverageRatio(vals.wheelTravel, vals.shockStroke)
-    const preset = LINKAGE_PRESETS.find((p) => p.id === linkageId)
+    const preset = customPreset || LINKAGE_PRESETS.find((p) => p.id === linkageId)
+    const effProg = customPreset ? null : customProg
 
     // Resolve user's sag input into both shock and wheel representations
-    const userSag = resolveSag(sagPct, sagMode, preset, customProg, geoLR, vals.wheelTravel, vals.shockStroke)
+    const userSag = resolveSag(sagPct, sagMode, preset, effProg, geoLR, vals.wheelTravel, vals.shockStroke)
 
     // LR at sag evaluated at wheel position (correct physics)
-    const lrAtSag = lrAtTravelFrac(userSag.wheelSagPct, preset, customProg, geoLR)
+    const lrAtSag = lrAtTravelFrac(userSag.wheelSagPct, preset, effProg, geoLR)
     const linkageMod = geoLR ? lrAtSag / geoLR : 1.0
     const effectiveLR = lrAtSag
 
@@ -374,7 +404,7 @@ export default function SpringCalculator() {
     ]
 
     return { riderKg, geoLR, effectiveLR, linkageMod, rearForceN, nmm, lbin, curveData, yDomain, yDomainClamped, lrDomain, userSag }
-  }, [vals, sagPct, sagMode, linkageId, customProg])
+  }, [vals, sagPct, sagMode, linkageId, customProg, customPreset])
 
   // Zone is always classified against shock sag conventions (XC/Trail/Enduro/DH)
   const zone = getSagZone(calc.userSag.shockSagPct)
@@ -506,7 +536,7 @@ export default function SpringCalculator() {
           {/* Progression override */}
           <div className="input-group-header tune-header" style={{ marginTop: 12 }}>
             Linkage Progression
-            <InfoIcon text={`End-to-end progression % — how much stiffer the suspension gets from top to bottom of travel. Most trail bikes are 15–25%.\n\nThe reference value shown is typical for the selected suspension type. Override with your bike's actual number if you have it (from Linkage Design, Cascade Components, or manufacturer data). The override uses a linear curve model.`} width={290} />
+            <InfoIcon text={`End-to-end progression % — how much stiffer the suspension gets from top to bottom of travel. Most trail bikes are 15–25%.\n\nFormula: progression = (LR at top − LR at bottom) ÷ LR at top. A bike going 3.0 → 2.4 is (3.0 − 2.4) / 3.0 = 20%.\n\nThe reference value shown is typical for the selected suspension type. Override with your bike's actual number if you have it (from Linkage Design, Cascade Components, or manufacturer data). The override uses a linear curve model.`} width={290} />
           </div>
           {selectedPreset && customProg === null && (
             <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-dim)', marginBottom: 6, paddingLeft: 2 }}>
@@ -521,7 +551,7 @@ export default function SpringCalculator() {
               <InputField
                 label={customProg !== null ? 'Custom (linear model)' : 'Override (optional)'}
                 value={customProg !== null ? customProg : ''}
-                onChange={(v) => setCustomProg(Math.max(0, Math.min(50, v)))}
+                onChange={(v) => { setCustomProg(Math.max(0, Math.min(50, v))); clearCurve() }}
                 unit="%" min={0} max={50} step={1}
                 tip="Optional. Enter your bike's actual end-to-end progression % from linkage software or manufacturer data. Overrides the suspension type preset with a linear curve model."
               />
@@ -534,6 +564,30 @@ export default function SpringCalculator() {
                 reset
               </button>
             )}
+          </div>
+
+          {/* Measured curve — 3 points off a published graph */}
+          <div style={{ marginTop: 12 }}>
+            <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: customPreset ? 'var(--accent)' : 'var(--text-dim)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+              Or a measured curve (3 pts)
+              <InfoIcon text={`For bikes where you have the leverage numbers off a graph (Linkage Design, Cascade, Blister). Read LR at the top, middle, and bottom of travel and enter them here. The tool builds a curve through the three points and corrects the spring rate for its shape. Only the shape matters, so read the values straight off the graph.`} width={290} />
+              {customPreset && (
+                <button onClick={clearCurve} style={{ marginLeft: 'auto', fontSize: 9, color: 'var(--text-dim)', background: 'none', border: '1px solid var(--border)', borderRadius: 4, padding: '2px 6px', cursor: 'pointer' }}>reset</button>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {[['start', 'top', '0%'], ['mid', 'mid', '50%'], ['end', 'end', '100%']].map(([field, ph, pos]) => (
+                <div key={field} style={{ flex: 1 }}>
+                  <input
+                    type="number" className="calc-input" style={{ width: '100%', textAlign: 'center', padding: '7px 6px' }}
+                    value={curveInput[field]} placeholder={ph}
+                    onChange={(e) => setCurveField(field)(e.target.value)}
+                    min={1} max={5} step={0.05}
+                  />
+                  <div style={{ fontSize: 9, color: 'var(--text-dim)', textAlign: 'center', marginTop: 3, fontFamily: 'var(--font-mono)' }}>{pos} · LR</div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -551,6 +605,11 @@ export default function SpringCalculator() {
               <span className="big-rate-unit">N/mm</span>
             </div>
             <div className="big-rate-zone" style={{ color: zone.color }}>{zone.label} setup</div>
+            {calc.lbin && (
+              <div style={{ fontSize: 11, color: 'var(--text-dim)', marginBottom: 6 }}>
+                The linear coil rate that puts you at {Math.round(calc.userSag.shockSagPct * 100)}% shock sag on this bike.
+              </div>
+            )}
             {calc.lbin && (
               <div className="rate-nearest" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                 <span>
@@ -576,7 +635,7 @@ export default function SpringCalculator() {
               <Tip text="Leverage Ratio = wheel travel ÷ shock stroke. Higher LR = shock moves less per mm of wheel travel = stiffer spring needed.">
                 <span className="results-meta-tip">
                   LR {calc.geoLR ? calc.geoLR.toFixed(2) : '—'}:1
-                  {(linkageId || customProg !== null) && calc.effectiveLR ? <> → <span style={{ color: activePreset?.color || zone.color }}>{calc.effectiveLR.toFixed(2)}:1</span></> : null}
+                  {(linkageId || customProg !== null || customPreset) && calc.effectiveLR ? <> → <span style={{ color: activePreset?.color || zone.color }}>{calc.effectiveLR.toFixed(2)}:1</span></> : null}
                 </span>
               </Tip>
               <span className="results-meta-sep">·</span>
@@ -597,17 +656,18 @@ export default function SpringCalculator() {
               Suspension Type
               <InfoIcon text={`Select your bike's rear suspension type to apply a linkage correction. "Geometric only" uses raw travel ÷ stroke with no progression — the same assumption as Fox and MRP calculators. Selecting a type corrects for where the leverage ratio sits at your sag point vs the travel average.`} width={300} />
             </span>
-            {linkageId && (
+            {(linkageId || customProg !== null || customPreset) && (
               <span className="linkage-active-note" style={{ color: activePreset?.color }}>
                 {calc.linkageMod > 1 ? '+' : ''}{Math.round((calc.linkageMod - 1) * 100)}% spring adjustment
+                {customPreset ? ' · custom curve' : customProg !== null ? ' · custom %' : ''}
               </span>
             )}
           </div>
           <div className="linkage-tabs">
             <Tip text="Raw travel ÷ stroke with no progression assumed — same baseline as Fox and MRP calculators. Use this when you don't know your bike's linkage type or you want the geometric-only number." width={280}>
               <div
-                className={`linkage-tab ${!linkageId ? 'linkage-tab-active' : ''}`}
-                onClick={() => { setLinkageId(null); setCustomProg(null) }}
+                className={`linkage-tab ${!linkageId && !customPreset && customProg === null ? 'linkage-tab-active' : ''}`}
+                onClick={() => { setLinkageId(null); setCustomProg(null); clearCurve() }}
               >
                 <span className="lt-dot" style={{ background: 'var(--text-dim)' }} />
                 <span className="lt-name">Geometric</span>
@@ -623,7 +683,7 @@ export default function SpringCalculator() {
                   <div
                     className={`linkage-tab ${active ? 'linkage-tab-active' : ''}`}
                     style={active ? { borderColor: p.color } : {}}
-                    onClick={() => { setLinkageId(active ? null : p.id); setCustomProg(null) }}
+                    onClick={() => { setLinkageId(active ? null : p.id); setCustomProg(null); clearCurve() }}
                   >
                     <span className="lt-dot" style={{ background: p.color }} />
                     <span className="lt-name" style={active ? { color: p.color } : {}}>{shortLabel}</span>
