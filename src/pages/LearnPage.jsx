@@ -1,6 +1,7 @@
 import BumpVelocity from '../components/learn/BumpVelocity'
 import Packing from '../components/learn/Packing'
 import Clickers from '../components/learn/Clickers'
+import AxlePath from '../components/learn/AxlePath'
 import CollapsibleSection from '../components/CollapsibleSection'
 
 // Each entry is one explainer. Add new modules here — they render in order,
@@ -26,6 +27,13 @@ const MODULES = [
     title: 'What your clickers do',
     subtitle: 'How low- and high-speed compression and rebound each reshape one curve — and which terrain each one is for.',
     Component: Clickers,
+  },
+  {
+    id: 'axle-path',
+    num: '04',
+    title: 'Axle path and chain growth',
+    subtitle: 'Where the rear wheel travels, why rearward paths eat square edges, and what that costs in pedal kickback.',
+    Component: AxlePath,
   },
 ]
 
