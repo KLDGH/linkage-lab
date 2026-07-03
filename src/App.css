@@ -48,14 +48,21 @@
   border: 1px solid var(--border); padding: 2px 7px; border-radius: 2px;
 }
 .section-title { font-size: 19px; font-weight: 600; color: var(--text-bright); }
+.header-badge {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
+  color: #fff; padding: 3px 8px; border-radius: 3px;
+  line-height: 1.4; display: inline-block; white-space: nowrap;
+}
 
 /* ── Collapsible section (accordion) — one cohesive panel ── */
 .section-accordion {
   border: 1px solid var(--border);
   border-radius: 10px;
-  overflow: hidden;
   background: var(--bg2);
   margin-bottom: 24px;
+  /* No overflow:hidden here — it would clip any tooltip that pops outside
+     the panel's bounds (most of them, since triggers sit near the top).
+     Corners are rounded directly on the header below instead. */
 }
 /* The panel IS the surface, so the content cards inside drop their own
    frames — no box-in-a-box. Tinted zones (e.g. the inputs column) keep
@@ -80,6 +87,7 @@
   padding: 14px 18px;
   background: var(--bg3);
   border-bottom: 1px solid var(--border);
+  border-radius: 10px 10px 0 0;
   transition: background 0.14s, color 0.14s;
 }
 .acc-header:hover { background: var(--bg2); }
@@ -93,9 +101,10 @@
 .acc-header:hover .section-title,
 .acc-header:hover .acc-chevron { color: var(--accent); }
 .section-accordion.collapsed .acc-chevron { transform: rotate(180deg); }
-/* collapsed: the header is the whole panel, so drop its divider */
-.section-accordion.collapsed .acc-header { border-bottom: none; }
-.acc-body { padding: 18px; }
+/* collapsed: the header is the whole panel, so drop its divider and round
+   all four corners since there's no body below it. */
+.section-accordion.collapsed .acc-header { border-bottom: none; border-radius: 10px; }
+.acc-body { padding: 18px; border-radius: 0 0 10px 10px; }
 .unit-pill {
   display: flex; border: 1px solid var(--border); border-radius: 3px; overflow: hidden;
 }
@@ -386,25 +395,24 @@
 .footer-link { color: var(--accent); text-decoration: none; }
 .footer-link:hover { text-decoration: underline; }
 
-/* ── Tooltip ── */
-.tip-host {
-  position: relative; display: inline-flex; align-items: center;
-}
-.tip-host::after {
-  content: attr(data-tip);
-  position: absolute; bottom: calc(100% + 8px); left: 50%;
-  transform: translateX(-50%);
-  max-width: 90vw;
-  width: var(--tip-w, 220px);
+/* ── Tooltip ──
+   Rendered via a React portal directly onto <body>, position:fixed, with
+   left/top computed and clamped to the viewport in JS on every show. This
+   sidesteps CSS containing-block/stacking-context ambiguity entirely — the
+   portal is always a direct child of body, so it's never trapped by an
+   ancestor's overflow:hidden or paint order, and it can never overflow the
+   viewport since the JS clamp accounts for the tooltip's actual width. */
+.tip-host { display: inline-flex; align-items: center; }
+.tip-portal {
+  position: fixed;
   background: var(--text-bright); border: 1px solid var(--text-bright);
   color: var(--bg); font-size: 12px; line-height: 1.6;
   padding: 10px 12px; border-radius: 4px;
   white-space: pre-wrap; word-break: break-word;
-  pointer-events: none; opacity: 0;
-  transition: opacity 0.15s; z-index: 100;
+  pointer-events: none; z-index: 1000;
   text-transform: none; letter-spacing: 0;
+  max-height: 70vh; overflow-y: auto;
 }
-.tip-host:hover::after { opacity: 1; }
 
 .info-icon {
   font-size: 13px; color: var(--text-bright); margin-left: 5px;

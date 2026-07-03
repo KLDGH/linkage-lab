@@ -1,4 +1,5 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { springRateNmm, leverageRatio, nmmToLbin, G } from '../lib/springMath'
 import { LINKAGE_PRESETS, getLrAtTravel, averageLr } from '../lib/linkagePresets'
 import {
@@ -167,11 +168,68 @@ function getSagZone(pct) {
   return SAG_ZONES[3]
 }
 
-// Pure CSS tooltip — wrap any element
+// Portal-rendered tooltip — always mounts as a direct child of <body> with
+// position:fixed, so it's never trapped by an ancestor's overflow/stacking
+// context. Placement is computed in two passes: an instant guess on show
+// (using the trigger's position), then corrected once the portal has
+// actually rendered and its real height is known — long tooltips near the
+// top of the page flip to below instead of running off the top edge.
 function Tip({ text, children, width = 220 }) {
+  const ref = useRef(null)
+  const portalRef = useRef(null)
+  const flippedRef = useRef(false)
+  const [pos, setPos] = useState(null) // { left, top, placement, w } or null = hidden
+
+  const place = () => {
+    const el = ref.current
+    if (!el) return
+    const r = el.getBoundingClientRect()
+    const margin = 10
+    const w = Math.min(width, window.innerWidth - margin * 2)
+    let left = r.left + r.width / 2
+    left = Math.min(Math.max(left, w / 2 + margin), window.innerWidth - w / 2 - margin)
+    flippedRef.current = false
+    // Initial guess — corrected against the portal's real height below.
+    const placement = r.top > 150 ? 'above' : 'below'
+    setPos({ left, top: r.top, bottom: r.bottom, placement, w })
+  }
+  const hide = () => setPos(null)
+
+  useEffect(() => {
+    if (!pos || !portalRef.current || flippedRef.current) return
+    const pr = portalRef.current.getBoundingClientRect()
+    const margin = 10
+    // Placed above but it would clip the top of the viewport — flip once.
+    if (pos.placement === 'above' && pr.top < margin) {
+      flippedRef.current = true
+      setPos((p) => (p ? { ...p, placement: 'below' } : p))
+    }
+  }, [pos])
+
   return (
-    <span className="tip-host" data-tip={text} style={{ '--tip-w': `${width}px` }}>
+    <span
+      ref={ref}
+      className="tip-host"
+      onMouseEnter={place}
+      onMouseLeave={hide}
+      onFocus={place}
+      onBlur={hide}
+    >
       {children}
+      {pos && createPortal(
+        <div
+          ref={portalRef}
+          className="tip-portal"
+          style={{
+            left: pos.left, width: pos.w,
+            top: pos.placement === 'above' ? pos.top - 10 : pos.bottom + 10,
+            transform: pos.placement === 'above' ? 'translate(-50%, -100%)' : 'translate(-50%, 0)',
+          }}
+        >
+          {text}
+        </div>,
+        document.body
+      )}
     </span>
   )
 }
