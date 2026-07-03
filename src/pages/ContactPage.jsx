@@ -35,7 +35,7 @@ export default function ContactPage() {
             </div>
             <div className="contact-method">
               <span className="contact-method-label">Location</span>
-              <span className="contact-method-val">Los Angeles, CA</span>
+              <span className="contact-method-val">Marin County, CA</span>
               <span className="contact-method-note">Local drop-off available — email first to coordinate</span>
             </div>
           </div>

@@ -34,12 +34,7 @@ export default function AboutPage() {
         <div className="about-sidebar">
           <div className="about-sidebar-block">
             <span className="about-sidebar-label">Based in</span>
-            <span className="about-sidebar-val">Los Angeles, CA</span>
-          </div>
-  
-          <div className="about-sidebar-block">
-            <span className="about-sidebar-label">Tools</span>
-            <span className="about-sidebar-val">Spring Calculator · Linkage Analysis</span>
+            <span className="about-sidebar-val">Marin County, CA</span>
           </div>
           <div className="about-sidebar-block">
             <span className="about-sidebar-label">Instagram</span>
