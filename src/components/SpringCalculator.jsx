@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { springRateNmm, leverageRatio, nmmToLbin, G } from '../lib/springMath'
 import { LINKAGE_PRESETS, getLrAtTravel, averageLr } from '../lib/linkagePresets'
+import { BIKE_PRESETS } from '../lib/bikePresets'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartTooltip, ReferenceLine, ResponsiveContainer,
@@ -35,6 +36,9 @@ const BIAS_ZONES = [
 ]
 
 const CHART_PRESET_IDS = ['dwlink', 'horst', 'vpp', 'highpivot']
+
+// Color for the active measured-bike / custom curve in charts and notes
+const BIKE_COLOR = '#8b5cf6'
 
 // Rider-facing suspension type labels mapped to underlying LR presets
 const SUSPENSION_TYPES = [
@@ -300,12 +304,13 @@ function parseUrlState() {
     linkageId: link && LINKAGE_PRESETS.some(pr => pr.id === link) ? link : null,
     customProg: prog !== null ? prog : null,
     curve,
+    bikeId: BIKE_PRESETS.some(bk => bk.id === p.get('bike')) ? p.get('bike') : null,
     weightLbs: u === 'lb' ? true : u === 'kg' ? false : null,
   }
 }
 
 // Serialize current state to a URL search string
-function stateToQuery({ vals, sagPct, sagMode, linkageId, customProg, customPreset, weightLbs }) {
+function stateToQuery({ vals, sagPct, sagMode, linkageId, customProg, customPreset, bikeId, weightLbs }) {
   const p = new URLSearchParams()
   p.set('w', vals.riderWeightKg.toFixed(1))
   p.set('t', String(vals.wheelTravel))
@@ -315,7 +320,8 @@ function stateToQuery({ vals, sagPct, sagMode, linkageId, customProg, customPres
   p.set('mode', sagMode)
   if (linkageId) p.set('link', linkageId)
   if (customProg !== null) p.set('prog', String(customProg))
-  if (customPreset) p.set('curve', customPreset.points.map((pt) => pt.lr).join(','))
+  if (customPreset && !bikeId) p.set('curve', customPreset.points.map((pt) => pt.lr).join(','))
+  if (bikeId) p.set('bike', bikeId)
   p.set('u', weightLbs ? 'lb' : 'kg')
   return p.toString()
 }
@@ -329,6 +335,7 @@ export default function SpringCalculator() {
   const [weightLbs, setWeightLbs] = useState(initial.weightLbs ?? true)
   const [customProg, setCustomProg] = useState(initial.customProg ?? null) // null = follow preset
   const [curveInput, setCurveInput] = useState(initial.curve ?? { start: '', mid: '', end: '' })
+  const [bikeId, setBikeId] = useState(initial.bikeId ?? null) // measured bike preset
   const [shareStatus, setShareStatus] = useState('idle') // idle | copied
 
   // A user-entered 3-point leverage curve becomes a preset with points at
@@ -342,10 +349,28 @@ export default function SpringCalculator() {
     return null
   }, [curveInput])
 
+  // Measured bike: its curve overrides everything else, exactly like a
+  // custom curve but sourced from bikePresets.js.
+  const activeBike = BIKE_PRESETS.find((bk) => bk.id === bikeId) || null
+  const overridePreset = activeBike ? { id: 'bike', points: activeBike.points } : customPreset
+
   const clearCurve = () => setCurveInput({ start: '', mid: '', end: '' })
   const setCurveField = (field) => (raw) => {
     setCurveInput((prev) => ({ ...prev, [field]: raw }))
-    if (raw !== '') { setLinkageId(null); setCustomProg(null) }
+    if (raw !== '') { setLinkageId(null); setCustomProg(null); setBikeId(null) }
+  }
+
+  // Selecting a bike loads its measured curve and fills travel/stroke from
+  // its spec; selecting the empty option returns to the geometric baseline.
+  const selectBike = (id) => {
+    const bike = BIKE_PRESETS.find((bk) => bk.id === id)
+    setBikeId(bike ? bike.id : null)
+    if (bike) {
+      setVals((prev) => ({ ...prev, wheelTravel: bike.travel, shockStroke: bike.stroke }))
+      setLinkageId(null)
+      setCustomProg(null)
+      clearCurve()
+    }
   }
 
   const set = (k) => (v) => setVals((p) => ({ ...p, [k]: v }))
@@ -356,11 +381,11 @@ export default function SpringCalculator() {
   // Sync state → URL (debounced so dragging sliders doesn't spam history)
   useEffect(() => {
     const id = setTimeout(() => {
-      const query = stateToQuery({ vals, sagPct, sagMode, linkageId, customProg, customPreset, weightLbs })
+      const query = stateToQuery({ vals, sagPct, sagMode, linkageId, customProg, customPreset, bikeId, weightLbs })
       window.history.replaceState(null, '', `${window.location.pathname}?${query}`)
     }, 200)
     return () => clearTimeout(id)
-  }, [vals, sagPct, sagMode, linkageId, customProg, customPreset, weightLbs])
+  }, [vals, sagPct, sagMode, linkageId, customProg, customPreset, bikeId, weightLbs])
 
   // Copy current URL to clipboard with brief "copied" feedback
   const copyShareLink = async () => {
@@ -387,8 +412,8 @@ export default function SpringCalculator() {
   const switchSagMode = (newMode) => {
     if (newMode === sagMode) return
     const geoLR = leverageRatio(vals.wheelTravel, vals.shockStroke)
-    const preset = customPreset || LINKAGE_PRESETS.find((p) => p.id === linkageId)
-    const effProg = customPreset ? null : customProg
+    const preset = overridePreset || LINKAGE_PRESETS.find((p) => p.id === linkageId)
+    const effProg = overridePreset ? null : customProg
     const current = resolveSag(sagPct, sagMode, preset, effProg, geoLR, vals.wheelTravel, vals.shockStroke)
     const newVal = newMode === 'wheel' ? current.wheelSagPct : current.shockSagPct
     setSagMode(newMode)
@@ -399,8 +424,8 @@ export default function SpringCalculator() {
     const riderKg = vals.riderWeightKg
     const rearFrac = vals.rearPct / 100
     const geoLR = leverageRatio(vals.wheelTravel, vals.shockStroke)
-    const preset = customPreset || LINKAGE_PRESETS.find((p) => p.id === linkageId)
-    const effProg = customPreset ? null : customProg
+    const preset = overridePreset || LINKAGE_PRESETS.find((p) => p.id === linkageId)
+    const effProg = overridePreset ? null : customProg
 
     // Resolve user's sag input into both shock and wheel representations
     const userSag = resolveSag(sagPct, sagMode, preset, effProg, geoLR, vals.wheelTravel, vals.shockStroke)
@@ -425,6 +450,10 @@ export default function SpringCalculator() {
       const pSag = resolveSag(sagPct, sagMode, p, null, geoLR, vals.wheelTravel, vals.shockStroke)
       return computeForceCurve(p, null, geoLR, vals.wheelTravel, vals.shockStroke, pSag.wheelSagPct, riderKg, rearFrac)
     })
+    // Active override curve (measured bike or 3-point custom) gets its own series
+    const overridePts = overridePreset
+      ? computeForceCurve(overridePreset, null, geoLR, vals.wheelTravel, vals.shockStroke, userSag.wheelSagPct, riderKg, rearFrac)
+      : null
 
     const curveData = Array.from({ length: 21 }, (_, i) => {
       const t = i / 20
@@ -440,6 +469,12 @@ export default function SpringCalculator() {
           ? parseFloat((geoLR * getLrAtTravel(p, t) / averageLr(p)).toFixed(3))
           : null
       })
+      if (overridePreset) {
+        obj.force_active = overridePts[i]
+        obj.lr_active = geoLR
+          ? parseFloat((geoLR * getLrAtTravel(overridePreset, t) / averageLr(overridePreset)).toFixed(3))
+          : null
+      }
       return obj
     })
 
@@ -454,7 +489,7 @@ export default function SpringCalculator() {
 
     // LR curve domain
     const allLRs = curveData.flatMap(d =>
-      [d.lr_neutral, ...chartPresets.map(p => d[`lr_${p.id}`])].filter(Boolean)
+      [d.lr_neutral, d.lr_active, ...chartPresets.map(p => d[`lr_${p.id}`])].filter(Boolean)
     )
     const lrDomain = [
       parseFloat((Math.min(...allLRs) * 0.96).toFixed(2)),
@@ -462,7 +497,7 @@ export default function SpringCalculator() {
     ]
 
     return { riderKg, geoLR, effectiveLR, linkageMod, rearForceN, nmm, lbin, curveData, yDomain, yDomainClamped, lrDomain, userSag }
-  }, [vals, sagPct, sagMode, linkageId, customProg, customPreset])
+  }, [vals, sagPct, sagMode, linkageId, customProg, overridePreset])
 
   // Zone is always classified against shock sag conventions (XC/Trail/Enduro/DH)
   const zone = getSagZone(calc.userSag.shockSagPct)
@@ -689,11 +724,16 @@ export default function SpringCalculator() {
                 custom {customProg}% progression · linear model
               </div>
             )}
+            {activeBike && (
+              <div style={{ fontSize: 10, color: BIKE_COLOR, marginBottom: 4, fontFamily: 'var(--font-mono)' }}>
+                measured curve · {activeBike.name} ({activeBike.year})
+              </div>
+            )}
             <div className="results-meta">
               <Tip text="Leverage Ratio = wheel travel ÷ shock stroke. Higher LR = shock moves less per mm of wheel travel = stiffer spring needed.">
                 <span className="results-meta-tip">
                   LR {calc.geoLR ? calc.geoLR.toFixed(2) : '—'}:1
-                  {(linkageId || customProg !== null || customPreset) && calc.effectiveLR ? <> → <span style={{ color: activePreset?.color || zone.color }}>{calc.effectiveLR.toFixed(2)}:1</span></> : null}
+                  {(linkageId || customProg !== null || overridePreset) && calc.effectiveLR ? <> → <span style={{ color: activeBike ? BIKE_COLOR : activePreset?.color || zone.color }}>{calc.effectiveLR.toFixed(2)}:1</span></> : null}
                 </span>
               </Tip>
               <span className="results-meta-sep">·</span>
@@ -714,18 +754,18 @@ export default function SpringCalculator() {
               Suspension Type
               <InfoIcon text={`Select your bike's rear suspension type to apply a linkage correction. "Geometric only" uses raw travel ÷ stroke with no progression — the same assumption as Fox and MRP calculators. Selecting a type corrects for where the leverage ratio sits at your sag point vs the travel average.`} width={300} />
             </span>
-            {(linkageId || customProg !== null || customPreset) && (
-              <span className="linkage-active-note" style={{ color: activePreset?.color }}>
+            {(linkageId || customProg !== null || overridePreset) && (
+              <span className="linkage-active-note" style={{ color: activeBike ? BIKE_COLOR : activePreset?.color }}>
                 {calc.linkageMod > 1 ? '+' : ''}{Math.round((calc.linkageMod - 1) * 100)}% spring adjustment
-                {customPreset ? ' · custom curve' : customProg !== null ? ' · custom %' : ''}
+                {activeBike ? ` · measured ${activeBike.name}` : customPreset ? ' · custom curve' : customProg !== null ? ' · custom %' : ''}
               </span>
             )}
           </div>
           <div className="linkage-tabs">
             <Tip text="Raw travel ÷ stroke with no progression assumed — same baseline as Fox and MRP calculators. Use this when you don't know your bike's linkage type or you want the geometric-only number." width={280}>
               <div
-                className={`linkage-tab ${!linkageId && !customPreset && customProg === null ? 'linkage-tab-active' : ''}`}
-                onClick={() => { setLinkageId(null); setCustomProg(null); clearCurve() }}
+                className={`linkage-tab ${!linkageId && !overridePreset && customProg === null ? 'linkage-tab-active' : ''}`}
+                onClick={() => { setLinkageId(null); setCustomProg(null); clearCurve(); setBikeId(null) }}
               >
                 <span className="lt-dot" style={{ background: 'var(--text-dim)' }} />
                 <span className="lt-name">Geometric</span>
@@ -741,7 +781,7 @@ export default function SpringCalculator() {
                   <div
                     className={`linkage-tab ${active ? 'linkage-tab-active' : ''}`}
                     style={active ? { borderColor: p.color } : {}}
-                    onClick={() => { setLinkageId(active ? null : p.id); setCustomProg(null); clearCurve() }}
+                    onClick={() => { setLinkageId(active ? null : p.id); setCustomProg(null); clearCurve(); setBikeId(null) }}
                   >
                     <span className="lt-dot" style={{ background: p.color }} />
                     <span className="lt-name" style={active ? { color: p.color } : {}}>{shortLabel}</span>
@@ -749,6 +789,19 @@ export default function SpringCalculator() {
                 </Tip>
               )
             })}
+            <Tip text={`Measured leverage curves for specific bikes — real kinematic data, not archetypes. Selecting a bike loads its curve and fills in travel and stroke from its spec.\n\nMore bikes added as they're measured.`} width={280}>
+              <select
+                className={`bike-select ${activeBike ? 'bike-select-active' : ''}`}
+                value={bikeId ?? ''}
+                onChange={(e) => selectBike(e.target.value)}
+                aria-label="Measured bike presets"
+              >
+                <option value="">Measured bike…</option>
+                {BIKE_PRESETS.map((bk) => (
+                  <option key={bk.id} value={bk.id}>{bk.name} ({bk.year})</option>
+                ))}
+              </select>
+            </Tip>
           </div>
 
           {/* ── Dual charts ── */}
@@ -773,7 +826,7 @@ export default function SpringCalculator() {
                     <RechartTooltip
                       contentStyle={{ background: '#1c1814', border: '1px solid #3a3530', fontFamily: 'JetBrains Mono', fontSize: 11 }}
                       formatter={(v, name, props) => {
-                        const activeKey = linkageId ? `force_${linkageId}` : 'force_neutral'
+                        const activeKey = overridePreset ? 'force_active' : linkageId ? `force_${linkageId}` : 'force_neutral'
                         if (props.dataKey !== activeKey && props.dataKey !== 'targetLine') return [null, null]
                         return [`${Math.round(v * 0.2248)} lb · ${v} N`, props.dataKey === 'targetLine' ? 'Rear load' : 'Spring force']
                       }}
@@ -783,17 +836,21 @@ export default function SpringCalculator() {
                       stroke={zone.color} strokeDasharray="4 2"
                       label={{ value: `sag · ${Math.round(calc.userSag.wheelSagPct * 100)}% wheel`, fill: zone.color, fontSize: 9, position: 'insideTopRight' }} />
                     <Line type="monotone" dataKey="force_neutral" dot={false}
-                      stroke={!linkageId ? zone.color : '#bbb'} strokeWidth={!linkageId ? 2 : 1} strokeOpacity={!linkageId ? 1 : 0.2} />
+                      stroke={!linkageId && !overridePreset ? zone.color : '#bbb'} strokeWidth={!linkageId && !overridePreset ? 2 : 1} strokeOpacity={!linkageId && !overridePreset ? 1 : 0.2} />
                     {LINKAGE_PRESETS.filter(p => CHART_PRESET_IDS.includes(p.id)).map(p => {
                       const active = linkageId === p.id
                       return <Line key={p.id} type="monotone" dataKey={`force_${p.id}`} dot={false}
                         stroke={p.color} strokeWidth={active ? 2 : 1} strokeOpacity={active ? 1 : 0.15} />
                     })}
+                    {overridePreset && (
+                      <Line type="monotone" dataKey="force_active" dot={false}
+                        stroke={BIKE_COLOR} strokeWidth={2} />
+                    )}
                     <Line type="monotone" dataKey="targetLine" stroke="#f0b429" strokeWidth={1.5} strokeDasharray="5 3" dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
                 <div className="chart-legend">
-                  <span><span className="dot" style={{ background: !linkageId ? zone.color : activePreset?.color || zone.color }} /> Spring force</span>
+                  <span><span className="dot" style={{ background: overridePreset ? BIKE_COLOR : !linkageId ? zone.color : activePreset?.color || zone.color }} /> Spring force</span>
                   <span><span className="dot" style={{ background: '#f0b429' }} /> Rear load</span>
                 </div>
               </div>
@@ -817,7 +874,7 @@ export default function SpringCalculator() {
                     <RechartTooltip
                       contentStyle={{ background: '#1c1814', border: '1px solid #3a3530', fontFamily: 'JetBrains Mono', fontSize: 11 }}
                       formatter={(v, name, props) => {
-                        const activeKey = linkageId ? `lr_${linkageId}` : 'lr_neutral'
+                        const activeKey = overridePreset ? 'lr_active' : linkageId ? `lr_${linkageId}` : 'lr_neutral'
                         if (props.dataKey !== activeKey) return [null, null]
                         return [`${v.toFixed(2)}:1`, 'Leverage ratio']
                       }}
@@ -827,17 +884,21 @@ export default function SpringCalculator() {
                       stroke={zone.color} strokeDasharray="4 2"
                       label={{ value: `sag · ${Math.round(calc.userSag.wheelSagPct * 100)}% wheel`, fill: zone.color, fontSize: 9, position: 'insideTopRight' }} />
                     <Line type="monotone" dataKey="lr_neutral" dot={false}
-                      stroke={!linkageId ? zone.color : '#bbb'} strokeWidth={!linkageId ? 2 : 1} strokeOpacity={!linkageId ? 1 : 0.2} />
+                      stroke={!linkageId && !overridePreset ? zone.color : '#bbb'} strokeWidth={!linkageId && !overridePreset ? 2 : 1} strokeOpacity={!linkageId && !overridePreset ? 1 : 0.2} />
                     {LINKAGE_PRESETS.filter(p => CHART_PRESET_IDS.includes(p.id)).map(p => {
                       const active = linkageId === p.id
                       return <Line key={p.id} type="monotone" dataKey={`lr_${p.id}`} dot={false}
                         stroke={p.color} strokeWidth={active ? 2 : 1} strokeOpacity={active ? 1 : 0.15} />
                     })}
+                    {overridePreset && (
+                      <Line type="monotone" dataKey="lr_active" dot={false}
+                        stroke={BIKE_COLOR} strokeWidth={2} />
+                    )}
                   </LineChart>
                 </ResponsiveContainer>
                 <div className="chart-legend">
-                  <span><span className="dot" style={{ background: !linkageId ? zone.color : activePreset?.color || zone.color }} />
-                    {activePreset ? activePreset.name : 'Your geometry'}
+                  <span><span className="dot" style={{ background: overridePreset ? BIKE_COLOR : !linkageId ? zone.color : activePreset?.color || zone.color }} />
+                    {activeBike ? `${activeBike.name} (measured)` : customPreset ? 'Custom curve (3 pts)' : activePreset ? activePreset.name : 'Your geometry'}
                   </span>
                 </div>
               </div>
