@@ -13,8 +13,13 @@
 .site-logo {
   font-size: 20px; font-weight: 600; letter-spacing: 0.14em;
   color: var(--text-bright); text-decoration: none;
+  display: inline-flex; align-items: center; gap: 12px;
 }
 .site-logo:hover { color: var(--text-bright); }
+.site-logo-mark {
+  width: 30px; height: 30px; flex-shrink: 0;
+  border-radius: 7px; display: block;
+}
 .logo-accent { color: var(--green); }
 .site-nav {
   display: flex; gap: 4px; align-items: center;
