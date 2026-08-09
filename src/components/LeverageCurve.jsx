@@ -74,7 +74,7 @@ export default function LeverageCurve() {
                 width={36}
               />
               <Tooltip
-                contentStyle={{ background: '#1c1814', border: '1px solid #3a3530', fontFamily: 'JetBrains Mono', fontSize: 12 }}
+                contentStyle={{ background: 'var(--bg2)', border: '1px solid var(--border)', color: 'var(--text)', fontFamily: 'JetBrains Mono', fontSize: 12 }}
                 formatter={(v, name) => {
                   const p = LINKAGE_PRESETS.find((x) => x.id === name)
                   return [`${v} : 1`, p?.name || name]
@@ -134,7 +134,7 @@ export default function LeverageCurve() {
           </div>
           <div className="explainer-item">
             <span className="explainer-term" style={{ color: '#f0b429' }}>Rising curve</span>
-            <span className="explainer-def">LR increases → spring feels softer deep in travel. VPP's U-shape gives mid-stroke support + end-stroke compliance.</span>
+            <span className="explainer-def">LR increases → spring feels softer deep in travel. Rare in modern MTB; older VPP and some faux-bar designs did this mid-stroke.</span>
           </div>
           <div className="explainer-item">
             <span className="explainer-term" style={{ color: '#e53e3e' }}>Flat curve</span>

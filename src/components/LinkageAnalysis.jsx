@@ -37,14 +37,13 @@ const chartData = Array.from({ length: 21 }, (_, i) => {
 
 const TICK = { fill: '#8896aa', fontSize: 11, fontFamily: 'JetBrains Mono' }
 const GRID = { strokeDasharray: '3 3', stroke: '#e8e4de' }
-const TT   = { background: '#1c1814', border: '1px solid #3a3530', fontFamily: 'JetBrains Mono', fontSize: 11 }
+const TT   = { background: 'var(--bg2)', border: '1px solid var(--border)', color: 'var(--text)', fontFamily: 'JetBrains Mono', fontSize: 11 }
 
 export default function LinkageAnalysis() {
   return (
     <>
       <p className="la-intro">
-        Full kinematic analysis from pivot coordinates — leverage ratio, anti-squat, pedal kickback,
-        and brake rise across the travel. Early alpha. Bikes being added one at a time.
+        Leverage ratio, anti-squat and pedal kickback across the travel.
       </p>
 
       {/* ── Demo bike card ── */}
@@ -121,7 +120,7 @@ export default function LinkageAnalysis() {
         {/* 3 — Pedal kickback */}
         <div className="card la-chart-card">
           <div className="la-chart-title">Pedal Kickback</div>
-          <div className="la-chart-sub">degrees of crank rotation per mm wheel travel</div>
+          <div className="la-chart-sub">crank rotation, cumulative from topout</div>
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={chartData} margin={{ top: 22, right: 12, left: 0, bottom: 8 }}>
               <CartesianGrid {...GRID} />
@@ -142,10 +141,10 @@ export default function LinkageAnalysis() {
 
       {/* ── Alpha notice ── */}
       <div className="la-notice">
-        <span className="la-notice-badge">ALPHA</span>
         <p>
-          Analysis generated from measured pivot coordinates for this specific bike.
-          Early alpha — more bikes being added one at a time.
+          Leverage curve fitted to published Avalanche and Blister measurements. Anti-squat and
+          kickback are modelled from the design's known character, not solved from pivot
+          coordinates. More bikes being added one at a time.
         </p>
       </div>
 

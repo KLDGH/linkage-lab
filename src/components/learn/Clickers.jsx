@@ -24,30 +24,30 @@ const coeff = (key, s) => RANGE[key][0] + s * (RANGE[key][1] - RANGE[key][0])
 
 const CLICKERS = {
   lsc: {
-    abbr: 'LSC', name: 'Low-speed compression', color: '#3b82f6', side: 'compression',
+    abbr: 'LSC', name: 'Low-speed compression', color: '#3b82f6',
     zone: [0, VK],
-    governs: 'Slow, deliberate loads — brake dive, berms, g-outs, pumping, and weight transfer.',
+    governs: 'Slow, deliberate loads: brake dive, berms, g-outs, pumping, and weight transfer.',
     tooMuch: 'Harsh over small bumps; the wheel deflects instead of absorbing, costing grip.',
     tooLittle: 'Vague and wallowy; the bike dives under braking and sinks in berms.',
   },
   hsc: {
-    abbr: 'HSC', name: 'High-speed compression', color: '#2dd4bf', side: 'compression',
+    abbr: 'HSC', name: 'High-speed compression', color: '#2dd4bf',
     zone: [VK, VMAX],
-    governs: 'Sharp, sudden hits — square edges, roots, rocks, and hard landings.',
+    governs: 'Sharp, sudden hits: square edges, roots, rocks, and hard landings.',
     tooMuch: 'Harsh on sharp impacts; the wheel skips across the tops of hits.',
     tooLittle: 'Blows through travel and bottoms hard on big hits.',
   },
   lsr: {
-    abbr: 'LSR', name: 'Low-speed rebound', color: '#f0b429', side: 'rebound',
+    abbr: 'LSR', name: 'Low-speed rebound', color: '#f0b429',
     zone: [-VK, 0],
     governs: 'How the bike settles and holds its ride height between hits and through turns.',
     tooMuch: 'Sits low and feels sluggish; slow to recover and packs over small bumps.',
     tooLittle: 'Springs back quickly — lively but loose, and hard to keep composed.',
   },
   hsr: {
-    abbr: 'HSR', name: 'High-speed rebound', color: '#e8743b', side: 'rebound',
+    abbr: 'HSR', name: 'High-speed rebound', color: '#e8743b',
     zone: [-VMAX, -VK],
-    governs: 'Recovery after big compressions — this is the packing circuit from module 02.',
+    governs: 'Recovery after big compressions: this is the packing circuit from module 02.',
     tooMuch: 'Packs down through repeated big hits; rides deep and harsh.',
     tooLittle: 'Kicks and bucks after big hits, throwing the bike off line.',
   },
@@ -71,7 +71,18 @@ function forceAt(v, c) {
 }
 
 const TICK = { fill: '#8896aa', fontSize: 10, fontFamily: 'JetBrains Mono' }
-const TT = { background: '#1c1814', border: '1px solid #3a3530', fontFamily: 'JetBrains Mono', fontSize: 11 }
+const TT = { background: 'var(--bg2)', border: '1px solid var(--border)', color: 'var(--text)', fontFamily: 'JetBrains Mono', fontSize: 11 }
+
+// One firm/soft vocabulary for both the axis ticks and the tooltip — they used
+// to disagree, so a point the axis called "soft" the tooltip called "moderate".
+// At zero shaft velocity the damper makes no force at all, so that reads blank.
+function feelOf(v) {
+  const a = Math.abs(v)
+  if (a < 50) return ''
+  if (a > 1300) return 'firm'
+  if (a > 500) return 'moderate'
+  return 'soft'
+}
 
 function ClickerSlider({ id, value, onChange, onFocus, active }) {
   const def = CLICKERS[id]
@@ -140,9 +151,7 @@ export default function Clickers() {
 
       {/* ── Curve ── */}
       <div className="card learn-card">
-        <div className="chart-pair-title">
-          The Damper&apos;s Force–Velocity Curve · each clicker bends one zone
-        </div>
+        <div className="chart-pair-title">Force–Velocity Curve</div>
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={data} margin={{ top: 16, right: 18, left: 10, bottom: 22 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e8e4de" />
@@ -152,13 +161,13 @@ export default function Clickers() {
               ticks={[-1.5, -1, -0.5, 0, 0.5, 1, 1.5]} tickFormatter={(v) => `${v}`} tick={TICK}
               label={{ value: '←  rebound      shaft velocity (m/s)      compression  →', position: 'insideBottom', offset: -10, fill: '#8896aa', fontSize: 10 }} />
             <YAxis domain={[-2000, 2000]} ticks={[-1800, -900, 0, 900, 1800]}
-              tickFormatter={(v) => { const a = Math.abs(v); return a < 50 ? 'soft' : a > 1400 ? 'firm' : '' }}
+              tickFormatter={(v) => feelOf(v)}
               tick={TICK} width={46} />
             <RechartTooltip contentStyle={TT}
-              formatter={(val) => { const a = Math.abs(val); const feel = a > 1300 ? 'firm' : a > 500 ? 'moderate' : 'soft'; return [`${feel} (${val >= 0 ? 'compression' : 'rebound'})`, 'Push-back'] }}
+              formatter={(val) => [`${feelOf(val) || 'none'} (${val >= 0 ? 'compression' : 'rebound'})`, 'Push-back']}
               labelFormatter={(l) => `${l} m/s`} />
             {/* blow-off knees (low/high split) */}
-            <ReferenceLine x={VK} stroke="#a89f92" strokeDasharray="4 4" />
+            <ReferenceLine x={VK} stroke="#a89f92" strokeDasharray="4 4" label={{ value: `${VK} m/s`, position: 'top', fill: '#a89f92', fontSize: 9 }} />
             <ReferenceLine x={-VK} stroke="#a89f92" strokeDasharray="4 4" />
             <ReferenceLine x={0} stroke="#6b6259" strokeWidth={1} />
             <ReferenceLine y={0} stroke="#6b6259" strokeWidth={1} />
@@ -175,7 +184,8 @@ export default function Clickers() {
           <strong style={{ color: 'var(--text-bright)' }}>Reading it as feel:</strong> the height of the curve is how hard the
           suspension pushes back at that bump speed — higher is firmer and more supportive but harsher; lower is softer and
           more plush but quicker to dive or bottom. Each clicker sets the steepness of its own zone. The dashed lines are the
-          blow-off knee, where the shim stack opens and the high-speed circuit takes over.
+          blow-off knee, where the shim stack opens and the high-speed circuit takes over. Coefficients here are illustrative;
+          a specific damper&apos;s knee and slopes differ.
         </div>
       </div>
 
@@ -184,7 +194,6 @@ export default function Clickers() {
         <div className="clicker-readout-head">
           <span className="clicker-readout-abbr" style={{ background: def.color }}>{def.abbr}</span>
           <span className="clicker-readout-name">{def.name}</span>
-          <span className="clicker-readout-zone">{def.side} · {(active === 'lsc' || active === 'lsr') ? 'low' : 'high'}-speed</span>
         </div>
         <div className="clicker-readout-grid">
           <div>
@@ -206,11 +215,11 @@ export default function Clickers() {
       <div className="learn-takeaway">
         <div className="learn-takeaway-title">What this means for your setup</div>
         <ul>
-          <li><strong>Four clickers, one curve.</strong> Low-speed adjusters set the slope near the centre; high-speed adjusters set the slope past the blow-off knee. Compression is the right half, rebound the left. Every adjustment you make is reshaping a piece of this one curve.</li>
-          <li><strong>Match the clicker to the terrain.</strong> A problem on sharp, square hits lives at high velocity — reach for high-speed compression. A problem under braking or in berms lives at low velocity — that&apos;s low-speed. The markers show where common riding moments fall on the curve.</li>
-          <li><strong>Low and high speed are nearly independent.</strong> Because the knee separates them, you can firm up big hits without making small bumps harsh, or calm a busy small-bump feel without giving up bottoming support. This is why quality dampers expose both.</li>
-          <li><strong>Most riders run too much rebound.</strong> The setting with the most grip is usually faster than the one that feels most composed — a calm, planted feel often comes at the cost of traction. If in doubt, try a click or two faster than feels natural.</li>
-          <li><strong>It ties back.</strong> Which velocities your terrain produces came from module 01; what happens when rebound can&apos;t recover between hits came from module 02. This curve is the map that connects the knob in your hand to both.</li>
+          <li><strong>Four clickers, one curve.</strong> Low-speed adjusters set the slope near the center; high-speed adjusters set the slope past the blow-off knee. Compression is the right half, rebound the left.</li>
+          <li><strong>Match the clicker to the terrain.</strong> A problem on sharp, square hits lives at high velocity: reach for high-speed compression. A problem under braking or in berms lives at low velocity: that&apos;s low-speed. The markers show where common riding moments fall on the curve.</li>
+          <li><strong>Low and high speed are nearly independent.</strong> Because the knee separates them, you can firm up big hits without making small bumps harsh, or calm a busy small-bump feel without giving up bottoming support.</li>
+          <li><strong>Most riders run too much rebound.</strong> The setting with the most grip is usually faster than the one that feels most composed; a calm, planted feel often comes at the cost of traction. If in doubt, try a click or two faster than feels natural.</li>
+          <li><strong>It ties back.</strong> Which velocities your terrain produces came from module 01; what happens when rebound can&apos;t recover between hits came from module 02.</li>
         </ul>
       </div>
     </div>

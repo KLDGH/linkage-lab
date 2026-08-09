@@ -22,6 +22,9 @@ html { overflow-x: hidden; }
   --accent: #1d4ed8;
   --purple: #6d28d9;
   --font: 'JetBrains Mono', 'Courier New', monospace;
+  /* Alias — 17 call sites across the Learn modules and Tools page request
+     --font-mono for live numbers; without it they fell back to generic mono. */
+  --font-mono: 'JetBrains Mono', 'Courier New', monospace;
 }
 
 body {

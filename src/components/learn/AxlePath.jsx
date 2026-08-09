@@ -57,7 +57,7 @@ function buildData(h) {
 }
 
 const TICK = { fill: '#8896aa', fontSize: 10, fontFamily: 'JetBrains Mono' }
-const TT = { background: '#1c1814', border: '1px solid #3a3530', fontFamily: 'JetBrains Mono', fontSize: 11 }
+const TT = { background: 'var(--bg2)', border: '1px solid var(--border)', color: 'var(--text)', fontFamily: 'JetBrains Mono', fontSize: 11 }
 
 // scene geometry (SVG px). Scale 0.5 px/mm, bike faces right.
 const S = 0.5
@@ -111,7 +111,7 @@ export default function AxlePath() {
             {PIVOT_PRESETS.map((p) => (
               <button key={p.id}
                 className={`choice-tab ${pivotH === p.h ? 'choice-tab-active' : ''}`}
-                onClick={() => setPivotH(p.h)}>{p.label}</button>
+                onClick={() => setPivotH(p.h)}>{p.label} · {p.h}</button>
             ))}
           </div>
         </div>
@@ -136,13 +136,18 @@ export default function AxlePath() {
       <div className="card learn-card">
         <div className="learn-scene">
           <svg viewBox={`0 0 ${SCENE_W} ${SCENE_H}`} preserveAspectRatio="xMidYMid meet" className="learn-svg">
-            {/* ground + square edge ahead of the rear wheel */}
-            <line x1={0} y1={GROUND_Y} x2={SCENE_W} y2={GROUND_Y} stroke="#a89f92" strokeWidth={2} />
-            <rect x={295} y={GROUND_Y - 30} width={44} height={30} fill="#d9d3ca" stroke="#a89f92" strokeWidth={1.5} />
-            {/* impact direction off the step corner */}
-            <line x1={295} y1={GROUND_Y - 30} x2={262} y2={GROUND_Y - 63}
-              stroke="#dc4a3d" strokeWidth={2} markerEnd="url(#ap-arrow)" />
-            <text x={252} y={GROUND_Y - 70} textAnchor="end" fill="#dc4a3d" fontSize={11} fontFamily="JetBrains Mono">impact</text>
+            {/* Ground + square edge. The frame is drawn fixed and the axle moves,
+                so the ground has to follow the axle or the wheel floats above it
+                at compression. Translating by the axle delta also makes the step
+                visibly move down-and-back with a rearward path, which is the point. */}
+            <g transform={`translate(${-rearCur * S}, ${-yCur * S})`}>
+              <line x1={0} y1={GROUND_Y} x2={SCENE_W} y2={GROUND_Y} stroke="#a89f92" strokeWidth={2} />
+              <rect x={295} y={GROUND_Y - 30} width={44} height={30} fill="#d9d3ca" stroke="#a89f92" strokeWidth={1.5} />
+              {/* impact direction off the step corner */}
+              <line x1={295} y1={GROUND_Y - 30} x2={262} y2={GROUND_Y - 63}
+                stroke="#dc4a3d" strokeWidth={2} markerEnd="url(#ap-arrow)" />
+              <text x={252} y={GROUND_Y - 70} textAnchor="end" fill="#dc4a3d" fontSize={11} fontFamily="JetBrains Mono">impact</text>
+            </g>
             <defs>
               <marker id="ap-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
                 <path d="M0,0 L10,5 L0,10 z" fill="#dc4a3d" />
@@ -170,6 +175,7 @@ export default function AxlePath() {
             {/* chainring + BB */}
             <circle cx={BB.x} cy={BB.y} r={ringR} fill="none" stroke="var(--text-dim)" strokeWidth={2.5} />
             <circle cx={BB.x} cy={BB.y} r={5} fill="var(--text-bright)" />
+            <text x={BB.x + ringR + 6} y={BB.y + 4} fill="var(--text-dim)" fontSize={11} fontFamily="JetBrains Mono">BB</text>
             {/* pivot */}
             <circle cx={pivot.x} cy={pivot.y} r={7} fill="var(--text-bright)" />
             <text x={pivot.x + 14} y={pivot.y + 4} fill="var(--text-dim)" fontSize={11} fontFamily="JetBrains Mono">pivot</text>
@@ -204,7 +210,7 @@ export default function AxlePath() {
             Max rearward:&nbsp;<strong style={{ color: '#3b82f6' }}>{rearMax.toFixed(0)} mm</strong>&nbsp;at {rearMaxY} mm travel
           </span>
           <span className="learn-peak">
-            Chain growth at bottom-out:&nbsp;<strong style={{ color: '#e8743b' }}>{growthEnd.toFixed(0)} mm</strong>
+            Chain growth at bottom-out:&nbsp;<strong>{growthEnd.toFixed(0)} mm</strong>
           </span>
           <span className="learn-peak">
             Kickback:&nbsp;<strong style={{ color: '#e8743b' }}>{kickEnd.toFixed(0)}°</strong> direct ·&nbsp;<strong style={{ color: '#00c97a' }}>0°</strong> over idler
@@ -280,9 +286,9 @@ export default function AxlePath() {
         <div className="learn-takeaway-title">What this means for your setup</div>
         <ul>
           <li><strong>The pivot sets the path.</strong> The rear axle travels a circle around the main pivot. A pivot near the BB sends the wheel up and slightly forward; a high pivot sends it up and back. The axle moves rearward until it reaches pivot height, then curves forward again.</li>
-          <li><strong>Rearward paths absorb square edges better.</strong> A square hit pushes the wheel up and back at the same time. When the axle path points the same way, the wheel gives with the hit. Module 01 showed square edges create the highest suspension velocities; a rearward path takes a slice of that energy as motion instead of impact.</li>
+          <li><strong>Rearward paths absorb square edges better.</strong> A square hit pushes the wheel up and back at the same time. When the axle path points the same way, the wheel gives with the hit. Module 01 showed square edges create the highest suspension velocities.</li>
           <li><strong>The bill is chain growth.</strong> A higher pivot stretches the BB-to-axle distance more through travel, and that growth turns the cranks backward through the chain. Deep in the travel on a high pivot, that reaches tens of degrees in a low gear. You feel it as pedals tugging back through rough sections.</li>
-          <li><strong>Idlers are the geometric fix.</strong> Route the chain over a pulley at the pivot and the chain path length stays constant through the whole stroke, so kickback goes to zero. The price is drivetrain drag and an extra pulley to service. This is the entire reason high-pivot bikes carry idlers.</li>
+          <li><strong>Idlers are the geometric fix.</strong> Route the chain over a pulley at the pivot and the chain path length stays constant through the whole stroke, so kickback goes to zero. The price is drivetrain drag and an extra pulley to service. That is why high-pivot bikes carry idlers.</li>
           <li><strong>Read marketing claims by magnitude.</strong> Many conventional bikes advertise a rearward axle path that amounts to 3–8 mm early in the travel. A true high pivot moves 15–30 mm rearward. Same words on the spec sheet, different order of effect on the trail.</li>
           <li><strong>Scope.</strong> This model is a pure single pivot, exact for single-pivot and high-pivot bikes. Multi-link bikes have a migrating instant center, so their paths and kickback sit between these curves. Anti-squat, the chain force that resists bobbing under power, comes from the same chain-line geometry and gets its own module.</li>
         </ul>

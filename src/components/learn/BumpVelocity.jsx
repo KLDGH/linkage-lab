@@ -80,7 +80,7 @@ function buildTrace(shape, w, R, speedKmh) {
 }
 
 const TICK = { fill: '#8896aa', fontSize: 10, fontFamily: 'JetBrains Mono' }
-const TT = { background: '#1c1814', border: '1px solid #3a3530', fontFamily: 'JetBrains Mono', fontSize: 11 }
+const TT = { background: 'var(--bg2)', border: '1px solid var(--border)', color: 'var(--text)', fontFamily: 'JetBrains Mono', fontSize: 11 }
 
 const DURATION = 5800 // ms playback (slowed so you can watch)
 
@@ -152,7 +152,7 @@ export default function BumpVelocity() {
   const cy = worldH - (cur.pos + R)
   const compressing = cur.vel >= 0
   const moving = Math.abs(cur.vel) >= 0.05
-  const velColor = !moving ? 'var(--text-dim)' : compressing ? '#00c97a' : '#f0b429'
+  const velColor = !moving ? 'var(--text-dim)' : compressing ? '#3b82f6' : '#f0b429'
 
   return (
     <div className="learn-body">
@@ -173,7 +173,7 @@ export default function BumpVelocity() {
           <span className="learn-control-label">Wheel size</span>
           <div className="choice-tabs">
             {WHEELS.map((wh) => (
-              <button key={wh.id}
+              <button key={wh.id} title={`Wheel radius ${wh.R} mm`}
                 className={`choice-tab ${wheel === wh.id ? 'choice-tab-active' : ''}`}
                 onClick={() => setWheel(wh.id)}>{wh.label}</button>
             ))}
@@ -184,6 +184,7 @@ export default function BumpVelocity() {
           <input type="range" min={8} max={45} step={1} value={speed}
             onChange={(e) => setSpeed(parseInt(e.target.value))}
             className="learn-speed-slider" />
+          <div className="learn-slider-ends"><span>8 km/h</span><span>45 km/h</span></div>
         </div>
         <button className="learn-play-btn" onClick={() => setPlaying((p) => !p)}>
           {playing ? '❚❚ Pause' : '▶ Play'}
@@ -214,11 +215,11 @@ export default function BumpVelocity() {
           </svg>
           <div className="learn-readout">
             <div className="learn-readout-item">
-              <span className="learn-readout-label">Compression</span>
+              <span className="learn-readout-label">Compression (travel)</span>
               <span className="learn-readout-val">{Math.round(cur.pos)} mm</span>
             </div>
             <div className="learn-readout-item">
-              <span className="learn-readout-label">Suspension velocity</span>
+              <span className="learn-readout-label">Velocity</span>
               <span className="learn-readout-val" style={{ color: velColor }}>
                 {cur.vel >= 0 ? '+' : ''}{cur.vel.toFixed(2)} m/s
               </span>
@@ -233,13 +234,13 @@ export default function BumpVelocity() {
         <div className="learn-peaks">
           <span className="learn-peak">
             Peak compression velocity:&nbsp;
-            <strong style={{ color: '#00c97a' }}>{peakComp.toFixed(2)} m/s</strong>
+            <strong style={{ color: '#3b82f6' }}>{peakComp.toFixed(2)} m/s</strong>
           </span>
           <span className="learn-peak">
             Peak rebound velocity:&nbsp;
             <strong style={{ color: '#f0b429' }}>{peakReb.toFixed(2)} m/s</strong>
           </span>
-          <span className="learn-peak learn-peak-hint">Change the shape, wheel size, or speed to compare.</span>
+          <span className="learn-peak learn-peak-hint">Rigid wheel rolling over a fixed 65 mm bump; the wheel center follows the bump envelope.</span>
         </div>
       </div>
 
@@ -263,7 +264,7 @@ export default function BumpVelocity() {
             </ResponsiveContainer>
           </div>
           <div>
-            <div className="chart-pair-title">Suspension Velocity · what the damper responds to</div>
+            <div className="chart-pair-title">Suspension Velocity</div>
             <ResponsiveContainer width="100%" height={200}>
               <LineChart data={data} margin={{ top: 14, right: 12, left: 0, bottom: 8 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e8e4de" />
@@ -272,10 +273,10 @@ export default function BumpVelocity() {
                 <YAxis domain={[-velMax * 1.1, velMax * 1.1]} tickFormatter={(v) => v.toFixed(1)} tick={TICK} width={34}
                   label={{ value: 'm/s', position: 'insideTopLeft', offset: 2, fill: '#8896aa', fontSize: 9 }} />
                 <RechartTooltip contentStyle={TT}
-                  formatter={(v) => [`${v} m/s`, v >= 0 ? 'Compression' : 'Rebound']} labelFormatter={(l) => `${l} ms`} />
+                  formatter={(v) => [`${v} m/s`, v >= 0 ? 'Compressing' : 'Rebounding']} labelFormatter={(l) => `${l} ms`} />
                 <ReferenceLine y={0} stroke="#a89f92" strokeWidth={1} />
                 <ReferenceLine x={cur.t} stroke="var(--text-dim)" strokeWidth={1} />
-                <Line type="monotone" dataKey="vel" stroke="#00c97a" strokeWidth={2} dot={false} isAnimationActive={false} />
+                <Line type="monotone" dataKey="vel" stroke="var(--text-bright)" strokeWidth={2} dot={false} isAnimationActive={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -286,11 +287,11 @@ export default function BumpVelocity() {
       <div className="learn-takeaway">
         <div className="learn-takeaway-title">What this means for your setup</div>
         <ul>
-          <li><strong>Diagnose by velocity, not by travel.</strong> Where a problem appears in the stroke matters less than how fast the suspension was moving when it happened. Velocity is what the damper responds to.</li>
+          <li><strong>Diagnose by velocity, not by travel.</strong> Where a problem appears in the stroke matters less than how fast the suspension was moving when it happened.</li>
           <li><strong>Square-edged hits produce high velocities.</strong> Roots, rocks, and curbs are governed by high-speed compression damping. If the bike feels harsh on sharp impacts but composed elsewhere, reduce high-speed compression rather than adding spring rate or low-speed damping.</li>
           <li><strong>Gradual loads produce low velocities.</strong> Braking dive, berms, weight transfer, and g-outs are governed by low-speed compression damping. High-speed adjusters have little effect on them.</li>
           <li><strong>Speed and wheel size shift the whole range.</strong> Riding faster, or running smaller wheels, raises the velocity of every bump. A setup that feels balanced at a moderate pace can become harsh as speed or terrain severity increases.</li>
-          <li><strong>This is why dampers separate low- and high-speed adjustment.</strong> Identify the type of terrain where the bike misbehaves, then adjust the circuit that operates in that velocity range.</li>
+          <li><strong>This is why dampers separate low- and high-speed adjustment.</strong></li>
         </ul>
       </div>
     </div>

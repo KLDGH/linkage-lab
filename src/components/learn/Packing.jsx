@@ -21,6 +21,12 @@ const SAG = (M * 9.81 / K) * 1000  // mm
 const TOTAL = 120                  // mm of travel
 const NAT_MS = 2 * Math.PI * Math.sqrt(M / K) * 1000
 
+const REB_PRESETS = [
+  { label: 'Too fast', z: 0.13 },
+  { label: 'Balanced', z: 0.30 },
+  { label: 'Too slow', z: 0.85 },
+]
+
 const BUMP_H = 0.045   // m
 const BUMP_W = 0.15    // m (physical width)
 const BUMP_SP = 0.55   // m (spacing between bump centers)
@@ -94,14 +100,14 @@ function simulate(zReb, v) {
 }
 
 const VERDICTS = {
-  skipping:  { label: 'Wheel skipping', color: '#f0b429', note: 'Rebound too fast — the suspension springs back past sag and the wheel gets light between hits, losing traction.' },
-  balanced:  { label: 'Returning to sag', color: '#00c97a', note: 'Rebound is matched to the terrain — the suspension recovers to sag just in time for the next hit, ready with full travel.' },
-  packing:   { label: 'Packing down', color: '#e8743b', note: 'Rebound too slow — the suspension can\'t recover between hits, so it rides progressively deeper and runs out of usable travel.' },
-  bottoming: { label: 'Packed to bottom-out', color: '#dc4a3d', note: 'Rebound far too slow — the suspension packs all the way down and bottoms, with no travel left to absorb the next hit.' },
+  skipping:  { label: 'Wheel skipping', color: '#f0b429', note: 'Rebound too fast: the suspension springs back past sag and the wheel gets light between hits, losing traction.' },
+  balanced:  { label: 'Returning to sag', color: '#00c97a', note: 'Rebound is matched to the terrain: the suspension recovers to sag just in time for the next hit, ready with full travel.' },
+  packing:   { label: 'Packing down', color: '#e8743b', note: 'Rebound too slow: the suspension can\'t recover between hits, so it rides progressively deeper and runs out of usable travel.' },
+  bottoming: { label: 'Packed to bottom-out', color: '#dc4a3d', note: 'Rebound far too slow: the suspension packs all the way down and bottoms, with no travel left to absorb the next hit.' },
 }
 
 const TICK = { fill: '#8896aa', fontSize: 10, fontFamily: 'JetBrains Mono' }
-const TT = { background: '#1c1814', border: '1px solid #3a3530', fontFamily: 'JetBrains Mono', fontSize: 11 }
+const TT = { background: 'var(--bg2)', border: '1px solid var(--border)', color: 'var(--text)', fontFamily: 'JetBrains Mono', fontSize: 11 }
 const DURATION = 8200 // ms playback (slowed so the bumps don't blast past)
 
 // scene scaling
@@ -211,11 +217,15 @@ export default function Packing() {
           <div className="learn-slider-ends"><span>fewer hits/sec</span><span>more hits/sec</span></div>
         </div>
         <div className="learn-control-group">
-          <span className="learn-control-label">Presets</span>
+          <span className="learn-control-label">Rebound presets</span>
           <div className="choice-tabs">
-            <button className="choice-tab" onClick={() => setZReb(0.13)}>Too fast</button>
-            <button className="choice-tab" onClick={() => setZReb(0.30)}>Balanced</button>
-            <button className="choice-tab" onClick={() => setZReb(0.85)}>Too slow</button>
+            {REB_PRESETS.map((p) => (
+              <button
+                key={p.label}
+                className={`choice-tab ${zReb === p.z ? 'choice-tab-active' : ''}`}
+                onClick={() => setZReb(p.z)}
+              >{p.label}</button>
+            ))}
           </div>
         </div>
         <button className="learn-play-btn" onClick={() => setPlaying((p) => !p)}>
@@ -257,14 +267,14 @@ export default function Packing() {
           </div>
         </div>
         <div className="learn-peaks">
-          <span className="learn-peak" style={{ flexBasis: '100%', fontFamily: 'var(--font, sans-serif)', color: v.color }}>{v.note}</span>
-          <span className="learn-peak learn-peak-hint">Spring &amp; mass natural recovery ≈ {Math.round(NAT_MS)} ms · bump interval ≈ {Math.round(sim.bumps.T * 1000)} ms</span>
+          <span className="learn-peak" style={{ flexBasis: '100%', color: v.color }}>{v.note}</span>
+          <span className="learn-peak learn-peak-hint">Undamped natural period ≈ {Math.round(NAT_MS)} ms · bump interval ≈ {Math.round(sim.bumps.T * 1000)} ms · scene at {(DURATION / (T_END * 1000)).toFixed(1)}× slow motion</span>
         </div>
       </div>
 
       {/* ── Chart ── */}
       <div className="card learn-card" style={{ marginTop: 12 }}>
-        <div className="chart-pair-title">Travel Used Over a Series of Bumps · does it return to sag?</div>
+        <div className="chart-pair-title">Travel Used · does it return to sag?</div>
         <ResponsiveContainer width="100%" height={240}>
           <LineChart data={sim.data} margin={{ top: 14, right: 16, left: 4, bottom: 18 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e8e4de" />
@@ -293,10 +303,10 @@ export default function Packing() {
       <div className="learn-takeaway">
         <div className="learn-takeaway-title">What this means for your setup</div>
         <ul>
-          <li><strong>Rebound&apos;s job is to return the suspension to sag in time for the next hit.</strong> On a single bump almost any rebound setting works. The setting only reveals itself across repeated impacts, where the suspension has to recover before the next one arrives.</li>
+          <li><strong>Rebound&apos;s job is to return the suspension to sag in time for the next hit.</strong> On a single bump almost any rebound setting works. It only reveals itself across repeated impacts.</li>
           <li><strong>Too slow, and the suspension packs down.</strong> Each hit compresses it further than the last because it hasn&apos;t recovered. The bike rides deeper in its travel, feels harsher, and loses traction as the usable travel disappears. This is why a bike can feel fine on the first hit and terrible through a rock garden.</li>
-          <li><strong>Too fast, and the wheel skips.</strong> The suspension springs back past sag, unloading the tire between hits. That feels lively but costs grip — the wheel is light exactly when you need it planted.</li>
-          <li><strong>Faster terrain demands faster rebound.</strong> The closer together the hits, the less time the suspension has to recover — so rough, high-speed sections need quicker rebound than smooth trail. A rebound setting that&apos;s right for one rarely suits the other.</li>
+          <li><strong>Too fast, and the wheel skips.</strong> The suspension springs back past sag, unloading the tire between hits. That feels lively but costs grip: the wheel is light exactly when you need it planted.</li>
+          <li><strong>Faster terrain demands faster rebound.</strong> The closer together the hits, the less time the suspension has to recover, so rough high-speed sections need quicker rebound than smooth trail. A rebound setting that&apos;s right for one rarely suits the other.</li>
           <li><strong>If a bike packs in repeated hits, speed up rebound before anything else.</strong> Riders often misread packing as too little compression or too soft a spring and stiffen the bike, which only makes it harsher. Match rebound to how fast the hits are coming.</li>
         </ul>
       </div>
