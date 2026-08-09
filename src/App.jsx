@@ -14,6 +14,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<ToolsPage />} />
           <Route path="/learn" element={<LearnPage />} />
+          <Route path="/learn/:moduleId" element={<LearnPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/contact" element={<ContactPage />} />
         </Routes>
