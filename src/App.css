@@ -524,6 +524,60 @@
 }
 .rate-nearest strong { color: var(--text-bright); }
 
+/* ── Preload fine-tune block ── */
+.preload-block {
+  margin-top: 12px; padding: 10px 12px;
+  background: rgba(0,0,0,0.02); border: 1px solid var(--border); border-radius: 6px;
+}
+.preload-head {
+  display: flex; align-items: center; gap: 6px; width: 100%;
+  font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-dim); font-family: inherit;
+  background: none; border: none; padding: 0; margin: 0;
+  cursor: pointer; text-align: left;
+}
+.preload-head:hover { color: var(--text-bright); }
+.preload-chevron {
+  display: inline-flex; align-items: center; color: var(--text-dim);
+  transform: rotate(180deg); transition: transform 0.2s ease;
+}
+.preload-chevron-open { transform: rotate(0deg); }
+.preload-head:hover .preload-chevron { color: var(--accent); }
+.preload-info { display: inline-flex; }
+.preload-collapsed-hint {
+  letter-spacing: 0; text-transform: none; opacity: 0.8; font-size: 11px;
+}
+.preload-tag {
+  font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-dim); border: 1px solid var(--border);
+  border-radius: 3px; padding: 1px 5px; opacity: 0.8;
+}
+.preload-suggest {
+  font-size: 12px; color: var(--text-dim); line-height: 1.6; margin-top: 7px;
+}
+.preload-suggest strong { color: var(--text-bright); }
+.preload-row {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-top: 9px; font-size: 12px; color: var(--text-dim);
+}
+.preload-row label {
+  font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-dim);
+}
+.preload-input-wrap { display: inline-flex; align-items: center; gap: 4px; }
+.preload-input-wrap input {
+  width: 58px; background: #fff; border: 1px solid var(--border); border-radius: 3px;
+  padding: 5px 7px; font-family: var(--font-mono); font-size: 13px; color: var(--text-bright);
+  text-align: center;
+}
+.preload-input-wrap input:focus { border-color: var(--accent); outline: none; }
+.preload-unit { font-size: 12px; color: var(--text-dim); }
+.preload-out { font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); }
+.preload-out strong { color: var(--green); }
+.preload-warn {
+  font-size: 10.5px; color: #b4791a; margin-top: 8px; line-height: 1.5;
+  font-family: var(--font-mono);
+}
+
 /* ── Results metadata (LR + Rear Load) ── */
 .results-meta {
   display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px;

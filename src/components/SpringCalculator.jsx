@@ -70,6 +70,10 @@ const SUSPENSION_TYPES = [
 
 // LR at wheel-travel fraction t (0..1), accounting for active preset or custom progression
 function lrAtTravelFrac(t, preset, customProg, geoLR) {
+  // A measured curve entered at absolute magnitude (3-point custom) is honored
+  // as-is — the numbers read off a published graph ARE the leverage ratio, not
+  // just a shape to rescale onto travel÷stroke.
+  if (preset && preset.absolute) return getLrAtTravel(preset, t)
   if (!geoLR) return geoLR
   if (customProg !== null) {
     return geoLR * (1 + (customProg / 200) * (1 - 2 * t))
@@ -92,6 +96,18 @@ function shockDispFromWheelSag(wheelSagPct, preset, customProg, geoLR, wheelTrav
     shockDisp += dx / lrAtTravelFrac(t, preset, customProg, geoLR)
   }
   return shockDisp
+}
+
+// When an absolute (entered-magnitude) curve is active, travel + the curve already
+// pin the shock stroke: stroke = ∫ 1/LR over the full wheel travel. We derive it so
+// the sag/rate math stays internally consistent, instead of over-trusting a typed
+// stroke that may not match the curve. Non-absolute presets keep the typed stroke.
+function effectiveStroke(overridePreset, wheelTravel, typedStroke) {
+  if (overridePreset && overridePreset.absolute && wheelTravel) {
+    const nominal = leverageRatio(wheelTravel, typedStroke) || 1
+    return shockDispFromWheelSag(1.0, overridePreset, null, nominal, wheelTravel)
+  }
+  return typedStroke
 }
 
 // Given shock sag fraction (of stroke), return corresponding wheel displacement (mm)
@@ -242,14 +258,14 @@ function InfoIcon({ text, width }) {
   return <Tip text={text} width={width}><span className="info-icon">ⓘ</span></Tip>
 }
 
-function InputField({ label, value, onChange, unit, min, max, step, tip }) {
+function InputField({ label, value, onChange, unit, min, max, step, tip, dim }) {
   const [local, setLocal] = useState(String(value))
 
   // Sync when parent changes externally (e.g. unit toggle kg↔lbs)
   useEffect(() => { setLocal(String(value)) }, [value])
 
   return (
-    <div className="input-group">
+    <div className="input-group" style={dim ? { opacity: 0.5 } : undefined}>
       <label className="input-label">
         {label}
         {tip && <InfoIcon text={tip} />}
@@ -280,7 +296,7 @@ function parseUrlState() {
   const p = new URLSearchParams(window.location.search)
   if (![...p.keys()].length) return {}
   const num = (k) => { const v = parseFloat(p.get(k)); return isNaN(v) ? null : v }
-  const w = num('w'), t = num('t'), s = num('s'), b = num('b'), sag = num('sag'), prog = num('prog')
+  const w = num('w'), t = num('t'), s = num('s'), b = num('b'), sag = num('sag'), prog = num('prog'), pl = num('pl')
   const link = p.get('link')
   const mode = p.get('mode')
   const u = p.get('u')
@@ -305,12 +321,13 @@ function parseUrlState() {
     customProg: prog !== null ? prog : null,
     curve,
     bikeId: BIKE_PRESETS.some(bk => bk.id === p.get('bike')) ? p.get('bike') : null,
+    preloadMm: pl,
     weightLbs: u === 'lb' ? true : u === 'kg' ? false : null,
   }
 }
 
 // Serialize current state to a URL search string
-function stateToQuery({ vals, sagPct, sagMode, linkageId, customProg, customPreset, bikeId, weightLbs }) {
+function stateToQuery({ vals, sagPct, sagMode, linkageId, customProg, customPreset, bikeId, preloadMm, weightLbs }) {
   const p = new URLSearchParams()
   p.set('w', vals.riderWeightKg.toFixed(1))
   p.set('t', String(vals.wheelTravel))
@@ -322,6 +339,7 @@ function stateToQuery({ vals, sagPct, sagMode, linkageId, customProg, customPres
   if (customProg !== null) p.set('prog', String(customProg))
   if (customPreset && !bikeId) p.set('curve', customPreset.points.map((pt) => pt.lr).join(','))
   if (bikeId) p.set('bike', bikeId)
+  if (preloadMm) p.set('pl', String(preloadMm))
   p.set('u', weightLbs ? 'lb' : 'kg')
   return p.toString()
 }
@@ -336,6 +354,8 @@ export default function SpringCalculator() {
   const [customProg, setCustomProg] = useState(initial.customProg ?? null) // null = follow preset
   const [curveInput, setCurveInput] = useState(initial.curve ?? { start: '', mid: '', end: '' })
   const [bikeId, setBikeId] = useState(initial.bikeId ?? null) // measured bike preset
+  const [preloadMm, setPreloadMm] = useState(initial.preloadMm ?? 0) // optional preload fine-tune
+  const [preloadOpen, setPreloadOpen] = useState(!!initial.preloadMm) // collapsed unless a shared link sets preload
   const [shareStatus, setShareStatus] = useState('idle') // idle | copied
 
   // A user-entered 3-point leverage curve becomes a preset with points at
@@ -344,7 +364,7 @@ export default function SpringCalculator() {
   const customPreset = useMemo(() => {
     const s = parseFloat(curveInput.start), m = parseFloat(curveInput.mid), e = parseFloat(curveInput.end)
     if (s > 0 && m > 0 && e > 0) {
-      return { id: 'custom', points: [{ t: 0, lr: s }, { t: 0.5, lr: m }, { t: 1, lr: e }] }
+      return { id: 'custom', absolute: true, points: [{ t: 0, lr: s }, { t: 0.5, lr: m }, { t: 1, lr: e }] }
     }
     return null
   }, [curveInput])
@@ -381,11 +401,11 @@ export default function SpringCalculator() {
   // Sync state → URL (debounced so dragging sliders doesn't spam history)
   useEffect(() => {
     const id = setTimeout(() => {
-      const query = stateToQuery({ vals, sagPct, sagMode, linkageId, customProg, customPreset, bikeId, weightLbs })
+      const query = stateToQuery({ vals, sagPct, sagMode, linkageId, customProg, customPreset, bikeId, preloadMm, weightLbs })
       window.history.replaceState(null, '', `${window.location.pathname}?${query}`)
     }, 200)
     return () => clearTimeout(id)
-  }, [vals, sagPct, sagMode, linkageId, customProg, customPreset, bikeId, weightLbs])
+  }, [vals, sagPct, sagMode, linkageId, customProg, customPreset, bikeId, preloadMm, weightLbs])
 
   // Copy current URL to clipboard with brief "copied" feedback
   const copyShareLink = async () => {
@@ -411,10 +431,11 @@ export default function SpringCalculator() {
   // Switching modes converts the slider value so the physical sag is preserved
   const switchSagMode = (newMode) => {
     if (newMode === sagMode) return
-    const geoLR = leverageRatio(vals.wheelTravel, vals.shockStroke)
     const preset = overridePreset || LINKAGE_PRESETS.find((p) => p.id === linkageId)
     const effProg = overridePreset ? null : customProg
-    const current = resolveSag(sagPct, sagMode, preset, effProg, geoLR, vals.wheelTravel, vals.shockStroke)
+    const effStroke = effectiveStroke(overridePreset, vals.wheelTravel, vals.shockStroke)
+    const geoLR = leverageRatio(vals.wheelTravel, effStroke)
+    const current = resolveSag(sagPct, sagMode, preset, effProg, geoLR, vals.wheelTravel, effStroke)
     const newVal = newMode === 'wheel' ? current.wheelSagPct : current.shockSagPct
     setSagMode(newMode)
     setSagPct(Math.max(SAG_MIN / 100, Math.min(SAG_MAX / 100, newVal)))
@@ -423,12 +444,16 @@ export default function SpringCalculator() {
   const calc = useMemo(() => {
     const riderKg = vals.riderWeightKg
     const rearFrac = vals.rearPct / 100
-    const geoLR = leverageRatio(vals.wheelTravel, vals.shockStroke)
     const preset = overridePreset || LINKAGE_PRESETS.find((p) => p.id === linkageId)
     const effProg = overridePreset ? null : customProg
+    // A 3-point custom curve is honored at absolute magnitude and derives its own
+    // stroke; every other mode uses the typed stroke unchanged.
+    const effStroke = effectiveStroke(overridePreset, vals.wheelTravel, vals.shockStroke)
+    const usesAbsCurve = !!(overridePreset && overridePreset.absolute)
+    const geoLR = leverageRatio(vals.wheelTravel, effStroke)
 
     // Resolve user's sag input into both shock and wheel representations
-    const userSag = resolveSag(sagPct, sagMode, preset, effProg, geoLR, vals.wheelTravel, vals.shockStroke)
+    const userSag = resolveSag(sagPct, sagMode, preset, effProg, geoLR, vals.wheelTravel, effStroke)
 
     // LR at sag evaluated at wheel position (correct physics)
     const lrAtSag = lrAtTravelFrac(userSag.wheelSagPct, preset, effProg, geoLR)
@@ -442,17 +467,33 @@ export default function SpringCalculator() {
     const lbin = nmm ? nmmToLbin(nmm) : null
     const rearForceN = riderKg * G * rearFrac
 
+    // Preload as an optional fine-tune layer. Spring rate above is the zero-preload
+    // rate that hits target sag — the correct baseline. Here we show how the nearest
+    // stock size lands vs target and the collar wind to reach it. Preload only shifts
+    // the force curve (ride height); it does not change rate. Winding X mm of preload
+    // reduces shock sag by exactly X mm, so this is a first-order (LR-at-sag) result.
+    let preload = null
+    if (lbin && nmm && userSag.shockSagMm) {
+      const nearestLbin = Math.round(lbin / 25) * 25
+      const kStockNmm = nearestLbin / nmmToLbin(1) // lb/in → N/mm via the same constant
+      const dTarget = userSag.shockSagMm
+      const dStock0 = dTarget * nmm / kStockNmm // stock spring's standalone shock sag (mm)
+      const stockSagPct = effStroke ? dStock0 / effStroke : null
+      const toTargetMm = dStock0 - dTarget // >0 → wind preload in; <0 → top-out gap
+      preload = { nearestLbin, kStockNmm, dTarget, dStock0, stockSagPct, toTargetMm }
+    }
+
     const chartPresets = LINKAGE_PRESETS.filter(p => CHART_PRESET_IDS.includes(p.id))
     // For each comparison curve, resolve sag using that preset's own LR curve
-    const neutralSag = resolveSag(sagPct, sagMode, null, null, geoLR, vals.wheelTravel, vals.shockStroke)
-    const neutralPts = computeForceCurve(null, null, geoLR, vals.wheelTravel, vals.shockStroke, neutralSag.wheelSagPct, riderKg, rearFrac)
+    const neutralSag = resolveSag(sagPct, sagMode, null, null, geoLR, vals.wheelTravel, effStroke)
+    const neutralPts = computeForceCurve(null, null, geoLR, vals.wheelTravel, effStroke, neutralSag.wheelSagPct, riderKg, rearFrac)
     const presetPts = chartPresets.map(p => {
-      const pSag = resolveSag(sagPct, sagMode, p, null, geoLR, vals.wheelTravel, vals.shockStroke)
-      return computeForceCurve(p, null, geoLR, vals.wheelTravel, vals.shockStroke, pSag.wheelSagPct, riderKg, rearFrac)
+      const pSag = resolveSag(sagPct, sagMode, p, null, geoLR, vals.wheelTravel, effStroke)
+      return computeForceCurve(p, null, geoLR, vals.wheelTravel, effStroke, pSag.wheelSagPct, riderKg, rearFrac)
     })
     // Active override curve (measured bike or 3-point custom) gets its own series
     const overridePts = overridePreset
-      ? computeForceCurve(overridePreset, null, geoLR, vals.wheelTravel, vals.shockStroke, userSag.wheelSagPct, riderKg, rearFrac)
+      ? computeForceCurve(overridePreset, null, geoLR, vals.wheelTravel, effStroke, userSag.wheelSagPct, riderKg, rearFrac)
       : null
 
     const curveData = Array.from({ length: 21 }, (_, i) => {
@@ -471,9 +512,10 @@ export default function SpringCalculator() {
       })
       if (overridePreset) {
         obj.force_active = overridePts[i]
-        obj.lr_active = geoLR
-          ? parseFloat((geoLR * getLrAtTravel(overridePreset, t) / averageLr(overridePreset)).toFixed(3))
-          : null
+        // Route through lrAtTravelFrac so an absolute custom curve is plotted at the
+        // values entered (matching the rate calc), not the old rescaled shape.
+        const lrActive = lrAtTravelFrac(t, overridePreset, null, geoLR)
+        obj.lr_active = lrActive != null ? parseFloat(lrActive.toFixed(3)) : null
       }
       return obj
     })
@@ -496,7 +538,7 @@ export default function SpringCalculator() {
       parseFloat((Math.max(...allLRs) * 1.04).toFixed(2)),
     ]
 
-    return { riderKg, geoLR, effectiveLR, linkageMod, rearForceN, nmm, lbin, curveData, yDomain, yDomainClamped, lrDomain, userSag }
+    return { riderKg, geoLR, effectiveLR, linkageMod, rearForceN, nmm, lbin, curveData, yDomain, yDomainClamped, lrDomain, userSag, effStroke, usesAbsCurve, preload }
   }, [vals, sagPct, sagMode, linkageId, customProg, overridePreset])
 
   // Zone is always classified against shock sag conventions (XC/Trail/Enduro/DH)
@@ -535,6 +577,7 @@ export default function SpringCalculator() {
             label="Shock Stroke"
             tip="How far the shock shaft travels. Usually printed on the shock body (e.g. '55mm'). Not the same as eye-to-eye length."
             value={vals.shockStroke} onChange={set('shockStroke')} unit="mm" min={20} max={120} step={0.5}
+            dim={!!customPreset}
           />
 
           {/* ── Tune divider ── */}
@@ -681,6 +724,15 @@ export default function SpringCalculator() {
                 </div>
               ))}
             </div>
+            {customPreset && calc.usesAbsCurve && calc.effStroke && (
+              <div style={{ fontSize: 9.5, fontFamily: 'var(--font-mono)', color: 'var(--text-dim)', marginTop: 7, lineHeight: 1.55 }}>
+                Your numbers are used as-is. With {vals.wheelTravel}mm travel they imply a{' '}
+                <span style={{ color: 'var(--accent)' }}>{calc.effStroke.toFixed(1)}mm stroke</span>, which the calc uses.
+                {Math.abs(calc.effStroke - vals.shockStroke) / vals.shockStroke > 0.04 && (
+                  <span style={{ color: '#f0b429' }}> Your Shock Stroke field says {vals.shockStroke}mm — worth a re-check.</span>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -707,7 +759,7 @@ export default function SpringCalculator() {
               <div className="rate-nearest" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                 <span>
                   Nearest stock: <strong>{Math.round(calc.lbin / 25) * 25} lb/in</strong>
-                  <InfoIcon text={"Spring rates are sold in 25 lb/in steps (Fox, RockShox) or 50 lb/in steps (Cane Creek).\n\nThe gap is bridgeable with preload — a few collar turns can shift your effective rate by 25–50 lb/in. That's why Cane Creek can sell in larger increments without leaving riders between springs.\n\nWhen in doubt, go to the next stiffer spring and back off with preload."} width={280} />
+                  <InfoIcon text={"Spring rates are sold in 25 lb/in steps (Fox, RockShox) or 50 lb/in steps (Cane Creek).\n\nPreload bridges the gap between sizes, but it shifts ride height (sag), not the rate itself — winding the collar just moves where the spring sits. See the preload line below for the wind needed to land this size on your target sag.\n\nWhen in doubt, size up and back the collar off to reach your sag."} width={290} />
                 </span>
                 <Tip text="Copy a link that opens this calculator with your exact inputs — useful for sharing setups on forums or saving for later." width={240}>
                   <button
@@ -719,6 +771,70 @@ export default function SpringCalculator() {
                 </Tip>
               </div>
             )}
+
+            {/* ── Preload fine-tune (optional layer on top of the sag-anchored rate) ── */}
+            {calc.preload && (() => {
+              const pl = calc.preload
+              const target = Math.round(calc.userSag.shockSagPct * 100)
+              const resultMm = pl.dStock0 - preloadMm
+              const resultPct = calc.effStroke ? Math.round((resultMm / calc.effStroke) * 100) : null
+              const forceLb = Math.round(pl.kStockNmm * preloadMm * 0.224809)
+              const toTargetLb = Math.round(pl.kStockNmm * pl.toTargetMm * 0.224809)
+              const collapsedHint = pl.toTargetMm >= 0.15
+                ? `wind ~${pl.toTargetMm.toFixed(1)}mm to target`
+                : pl.toTargetMm <= -0.15
+                  ? `~${Math.abs(pl.toTargetMm).toFixed(1)}mm gap to target`
+                  : 'lands on target'
+              return (
+                <div className="preload-block">
+                  <button
+                    type="button" className="preload-head"
+                    onClick={() => setPreloadOpen((o) => !o)}
+                    aria-expanded={preloadOpen}
+                  >
+                    <span className={`preload-chevron${preloadOpen ? ' preload-chevron-open' : ''}`} aria-hidden="true">
+                      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
+                        strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="6 15 12 9 18 15" />
+                      </svg>
+                    </span>
+                    Preload <span className="preload-tag">optional</span>
+                    {!preloadOpen && <span className="preload-collapsed-hint">· {collapsedHint}</span>}
+                    <span className="preload-info" onClick={(e) => e.stopPropagation()}>
+                      <InfoIcon width={300} text={"Preload pre-compresses the spring by winding the collar. It does NOT change spring rate — it shifts the whole force curve up, so it only moves ride height (sag). Winding X mm of preload reduces shock sag by X mm on any spring.\n\nUse it to land the nearest stock size on your sag, not as a substitute for rate. Most coil shocks cap around 2-3 turns (~5mm) to stay clear of coil bind. Negative = a top-out gap (collar backed off / spring a hair short of installed length)."} />
+                    </span>
+                  </button>
+                  {preloadOpen && (
+                    <>
+                      <div className="preload-suggest">
+                        {pl.nearestLbin} lb/in sits at <strong>~{Math.round(pl.stockSagPct * 100)}%</strong> shock sag on its own.{' '}
+                        {pl.toTargetMm >= 0.15
+                          ? <>Wind <strong>~{pl.toTargetMm.toFixed(1)}mm</strong> (≈{toTargetLb} lb) to reach {target}%.</>
+                          : pl.toTargetMm <= -0.15
+                            ? <>Back off <strong>~{Math.abs(pl.toTargetMm).toFixed(1)}mm</strong> (top-out gap) for {target}%, or just run it as-is.</>
+                            : <>Lands right on your {target}% target.</>}
+                      </div>
+                      <div className="preload-row">
+                        <label>Try preload</label>
+                        <div className="preload-input-wrap">
+                          <input
+                            type="number" step={0.5} value={preloadMm}
+                            onChange={(e) => { const v = parseFloat(e.target.value); setPreloadMm(isNaN(v) ? 0 : v) }}
+                          />
+                          <span className="preload-unit">mm</span>
+                        </div>
+                        <span className="preload-out">
+                          → <strong>{resultPct}%</strong> sag ({Math.round(resultMm)}mm){preloadMm ? `, ≈${forceLb > 0 ? '+' : ''}${forceLb} lb` : ''}
+                        </span>
+                      </div>
+                      {Math.abs(preloadMm) > 5 && (
+                        <div className="preload-warn">Over ~5mm / 2-3 turns — check your shock's stated limit before winding this far.</div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )
+            })()}
             {customProg !== null && (
               <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 4, fontFamily: 'var(--font-mono)' }}>
                 custom {customProg}% progression · linear model
@@ -824,7 +940,7 @@ export default function SpringCalculator() {
                       tick={{ fill: '#8896aa', fontSize: 10, fontFamily: 'JetBrains Mono' }}
                       width={44} />
                     <RechartTooltip
-                      contentStyle={{ background: '#1c1814', border: '1px solid #3a3530', fontFamily: 'JetBrains Mono', fontSize: 11 }}
+                      contentStyle={{ background: 'var(--bg2)', border: '1px solid var(--border)', color: 'var(--text)', fontFamily: 'JetBrains Mono', fontSize: 11 }}
                       formatter={(v, name, props) => {
                         const activeKey = overridePreset ? 'force_active' : linkageId ? `force_${linkageId}` : 'force_neutral'
                         if (props.dataKey !== activeKey && props.dataKey !== 'targetLine') return [null, null]
@@ -872,7 +988,7 @@ export default function SpringCalculator() {
                       label={{ value: 'LR', position: 'insideTopLeft', offset: 4, fill: '#8896aa', fontSize: 10 }}
                       width={36} />
                     <RechartTooltip
-                      contentStyle={{ background: '#1c1814', border: '1px solid #3a3530', fontFamily: 'JetBrains Mono', fontSize: 11 }}
+                      contentStyle={{ background: 'var(--bg2)', border: '1px solid var(--border)', color: 'var(--text)', fontFamily: 'JetBrains Mono', fontSize: 11 }}
                       formatter={(v, name, props) => {
                         const activeKey = overridePreset ? 'lr_active' : linkageId ? `lr_${linkageId}` : 'lr_neutral'
                         if (props.dataKey !== activeKey) return [null, null]
