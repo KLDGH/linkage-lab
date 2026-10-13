@@ -19,7 +19,7 @@ export default function App() {
           <Route path="/contact" element={<ContactPage />} />
         </Routes>
         <footer className="footer">
-          <span>SOLITAIRE DYNAMICS · spring rates are theoretical — always validate with your specific bike geometry</span>
+          <span>SOLITAIRE DYNAMICS · spring rates are theoretical, always validate with your specific bike geometry</span>
         </footer>
       </div>
     </BrowserRouter>

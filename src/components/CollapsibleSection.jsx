@@ -1,11 +1,13 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 // Accordion-style section panel. The whole header strip is the toggle —
 // click (or Enter/Space) to fold the body away, with an SVG chevron that
 // rotates as the indicator. State is in-memory only, so a page refresh
-// always returns every section to expanded.
-export default function CollapsibleSection({ id, tag, title, badge, defaultCollapsed = false, children }) {
+// always returns every section to expanded. A change in `openSignal` (any
+// new value) forces it open, so another part of the page can reveal it.
+export default function CollapsibleSection({ id, tag, title, badge, defaultCollapsed = false, openSignal, children }) {
   const [collapsed, setCollapsed] = useState(defaultCollapsed)
+  useEffect(() => { if (openSignal) setCollapsed(false) }, [openSignal])
   const toggle = () => setCollapsed((c) => !c)
 
   return (

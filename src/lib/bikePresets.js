@@ -16,6 +16,7 @@
 export const BIKE_PRESETS = [
   {
     id: 'druid-v2',
+    color: '#7c3aed',
     name: 'Forbidden Druid V2',
     year: '2023',
     travel: 130,
@@ -31,6 +32,7 @@ export const BIKE_PRESETS = [
   },
   {
     id: 'sentinel-v3',
+    color: '#0284c7',
     name: 'Transition Sentinel V3',
     year: '2025',
     travel: 150,
@@ -45,6 +47,7 @@ export const BIKE_PRESETS = [
   },
   {
     id: 'bronson-v5',
+    color: '#0d9488',
     name: 'Santa Cruz Bronson V5',
     year: '2025',
     travel: 150,
@@ -59,14 +62,16 @@ export const BIKE_PRESETS = [
   },
   {
     id: 'ripmo-v3',
+    color: '#ca8a04',
     name: 'Ibis Ripmo V3',
     year: '2025',
     travel: 147,
     stroke: 55, // VERIFY — derived from curve avg LR ≈ 2.67 (147/55 = 2.67)
     // Anchors measured: 3.3 → 2.85 @ 30% sag → 2.3, 30.3% progression (PBLE shape).
-    // NOTE: interpolating through the real anchors gives a sag correction of
-    // ~+7%, not the +14% the DW-Link archetype carries — one of the two needs
-    // rechecking against the original Avalanche sheet.
+    // The DW-Link archetype used to carry an unsourced 3.50 → 2.12 curve that
+    // produced a +14% correction no measured bike supports; it now takes its
+    // shape from this entry. Still worth checking these anchors against the
+    // original Avalanche sheet.
     points: [
       { t: 0.0, lr: 3.30 }, { t: 0.1, lr: 3.15 }, { t: 0.2, lr: 3.00 },
       { t: 0.3, lr: 2.85 }, { t: 0.4, lr: 2.71 }, { t: 0.5, lr: 2.59 },
@@ -76,6 +81,7 @@ export const BIKE_PRESETS = [
   },
   {
     id: 'claymore',
+    color: '#ea580c',
     name: 'Deviate Claymore',
     year: '2022',
     travel: 165,

@@ -1,18 +1,15 @@
+import { useDocumentTitle } from '../lib/useDocumentTitle'
+
 export default function AboutPage() {
+  useDocumentTitle('About')
   return (
     <div className="page">
-      <div className="page-hero">
-        <p className="page-eyebrow">Who's behind this</p>
-        <h1 className="page-title">About</h1>
-        <p className="page-lead">
-          Suspension tuning and tool building.
-        </p>
-      </div>
+      <h1 className="visually-hidden">About</h1>
 
       <div className="about-body">
         <div className="about-main">
 
-          <p className="about-graf about-graf-lead">
+          <p className="about-graf">
             Solitaire Dynamics is a one-person suspension shop. The work is
             spring rate, valving, shim stacks, and fluid selection, set for a
             specific rider and bike.
@@ -25,9 +22,9 @@ export default function AboutPage() {
           </p>
 
           <p className="about-graf">
-            The linkage analysis tool is in development, calibrated against
-            measured bikes as they are added. It computes leverage ratio,
-            anti-squat, and pedal kickback from pivot coordinates.
+            The leverage comparison uses curves from published measurements,
+            one bike at a time. A kinematics tool that solves anti-squat and
+            pedal kickback from pivot coordinates is in development.
           </p>
         </div>
 

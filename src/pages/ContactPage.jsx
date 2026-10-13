@@ -1,14 +1,11 @@
+import { Link } from 'react-router-dom'
+import { useDocumentTitle } from '../lib/useDocumentTitle'
+
 export default function ContactPage() {
+  useDocumentTitle('Contact')
   return (
     <div className="page">
-      <div className="page-hero">
-        <p className="page-eyebrow">Get in touch</p>
-        <h1 className="page-title">Contact</h1>
-        <p className="page-lead">
-          Questions about a service, want to send us your suspension, or just
-          want to talk setup? Reach out.
-        </p>
-      </div>
+      <h1 className="visually-hidden">Contact</h1>
 
       <div className="contact-layout">
 
@@ -31,12 +28,12 @@ export default function ContactPage() {
               >
                 @solitairedynamics
               </a>
-              <span className="contact-method-note">DMs open — good for quick questions</span>
+              <span className="contact-method-note">DMs open, good for quick questions</span>
             </div>
             <div className="contact-method">
               <span className="contact-method-label">Location</span>
               <span className="contact-method-val">Marin County, CA</span>
-              <span className="contact-method-note">Local drop-off available — email first to coordinate</span>
+              <span className="contact-method-note">Local drop-off available, email first to coordinate</span>
             </div>
           </div>
         </div>
@@ -46,8 +43,8 @@ export default function ContactPage() {
             <h3 className="contact-info-title">Before you email</h3>
             <p className="contact-info-body">
               If you&apos;re asking about spring rate or setup, try the{' '}
-              <a href="/" className="contact-link">spring calculator</a>{' '}
-              first — it covers most common questions about spring rate and
+              <Link to="/" className="contact-link">spring calculator</Link>{' '}
+              first. It covers most common questions about spring rate and
               linkage correction.
             </p>
           </div>

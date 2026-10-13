@@ -1,6 +1,10 @@
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo, useEffect, useRef, useId } from 'react'
 import { createPortal } from 'react-dom'
-import { springRateNmm, leverageRatio, nmmToLbin, G } from '../lib/springMath'
+import { Link } from 'react-router-dom'
+import {
+  leverageRatio, nmmToLbin, lbinToNmm, G,
+  lrAtTravelFrac, effectiveStroke, resolveSag, computeForceCurve, sagForRate, lrAtShockMm,
+} from '../lib/springMath'
 import { LINKAGE_PRESETS, getLrAtTravel, averageLr } from '../lib/linkagePresets'
 import { BIKE_PRESETS } from '../lib/bikePresets'
 import {
@@ -40,138 +44,38 @@ const CHART_PRESET_IDS = ['dwlink', 'horst', 'vpp', 'highpivot']
 // Color for the active measured-bike / custom curve in charts and notes
 const BIKE_COLOR = '#8b5cf6'
 
-// Rider-facing suspension type labels mapped to underlying LR presets
+// Rider-facing suspension types. Each maps to an archetype whose curve comes
+// from the measured bike named in `source`. The size of the correction is
+// computed live at the rider's own sag and appended to the tooltip, so no
+// percentage is written down here to drift away from the math.
 const SUSPENSION_TYPES = [
   {
     presetId: 'horst',
-    label: 'Horst / Four-Bar',
-    sublabel: 'Specialized FSR, Transition, Trek — most common baseline behavior',
-    tip: 'Consistently falling LR curve. At 30% sag the LR sits ~5% above the travel average. The most common rear suspension geometry — if a published chart or calculator doesn\'t ask about linkage type, it\'s probably assuming something close to this. Curve based on measured 2025 Transition Sentinel V3 (3.36 → 2.56, 24% progression).',
+    label: 'Horst',
+    examples: 'Specialized FSR, Transition',
+    shape: 'Falling curve: high leverage early, steadily lower toward bottom-out. The most common layout.',
   },
   {
     presetId: 'vpp',
-    label: 'VPP — Modern',
-    sublabel: 'Falling progressive curve, not the old U-shape',
-    tip: 'Modern VPP is a falling progressive curve — starts high and drops steadily. Not the bathtub U-curve of older designs. At 30% sag the LR is ~6% above average. Curve based on measured 2025 Santa Cruz Bronson V5 (3.08 → 2.26, 27% progression).',
+    label: 'VPP',
+    examples: 'Santa Cruz, Intense',
+    shape: 'Modern VPP falls steadily through the travel, not the U-shaped curve older VPP bikes had.',
   },
   {
     presetId: 'dwlink',
-    label: 'DW-Link / Maestro',
-    sublabel: 'Ibis, Pivot, Evil — biggest spring correction of any type',
-    tip: 'LR drops steeply in the first third of travel (right where sag sits), then levels off. At 30% sag the LR is ~14% above the travel average — the largest correction of any linkage type. Curve based on measured 2025 Ibis Ripmo V3 (3.50 → 2.12, 30% progression). Also covers Pivot and Evil bikes using similar DW-Link/Maestro geometry.',
+    label: 'DW-Link',
+    examples: 'Ibis, Pivot, Giant (Maestro)',
+    shape: 'Falls fastest in the first third of the travel, then flattens out.',
   },
   {
     presetId: 'highpivot',
-    label: 'High Pivot / Rearward Axle Path',
-    sublabel: 'Forbidden, Norco Optic, Deviate Claymore — supple off the top, steeply progressive at end-stroke',
-    tip: 'Bikes with an idler pulley and rearward axle path. LR starts high and falls gradually through the first half, then drops sharply toward bottom-out. At 30% sag LR is ~6% above average, but the steep end-stroke progression is the defining character. Curve based on Deviate Claymore measured data (2.97 → 2.30, 22.6% progression), validated against Forbidden Druid V2.',
+    label: 'High Pivot',
+    examples: 'Forbidden, Norco Optic, Deviate',
+    shape: 'Idler pulley and rearward axle path. Falls gradually, then steepens toward bottom-out.',
   },
 ]
 
-// LR at wheel-travel fraction t (0..1), accounting for active preset or custom progression
-function lrAtTravelFrac(t, preset, customProg, geoLR) {
-  // A measured curve entered at absolute magnitude (3-point custom) is honored
-  // as-is — the numbers read off a published graph ARE the leverage ratio, not
-  // just a shape to rescale onto travel÷stroke.
-  if (preset && preset.absolute) return getLrAtTravel(preset, t)
-  if (!geoLR) return geoLR
-  if (customProg !== null) {
-    return geoLR * (1 + (customProg / 200) * (1 - 2 * t))
-  }
-  if (preset) {
-    return geoLR * getLrAtTravel(preset, t) / averageLr(preset)
-  }
-  return geoLR
-}
-
-// Given wheel sag fraction, return corresponding shock displacement (mm)
-// by integrating 1/LR from 0 to the wheel sag position.
-function shockDispFromWheelSag(wheelSagPct, preset, customProg, geoLR, wheelTravel, N = 100) {
-  if (!geoLR || wheelSagPct <= 0) return 0
-  const wheelTarget = wheelSagPct * wheelTravel
-  const dx = wheelTarget / N
-  let shockDisp = 0
-  for (let i = 0; i < N; i++) {
-    const t = ((i + 0.5) / N) * wheelSagPct
-    shockDisp += dx / lrAtTravelFrac(t, preset, customProg, geoLR)
-  }
-  return shockDisp
-}
-
-// When an absolute (entered-magnitude) curve is active, travel + the curve already
-// pin the shock stroke: stroke = ∫ 1/LR over the full wheel travel. We derive it so
-// the sag/rate math stays internally consistent, instead of over-trusting a typed
-// stroke that may not match the curve. Non-absolute presets keep the typed stroke.
-function effectiveStroke(overridePreset, wheelTravel, typedStroke) {
-  if (overridePreset && overridePreset.absolute && wheelTravel) {
-    const nominal = leverageRatio(wheelTravel, typedStroke) || 1
-    return shockDispFromWheelSag(1.0, overridePreset, null, nominal, wheelTravel)
-  }
-  return typedStroke
-}
-
-// Given shock sag fraction (of stroke), return corresponding wheel displacement (mm)
-// by integrating up the wheel-travel axis until shock displacement reaches target.
-function wheelDispFromShockSag(shockSagPct, preset, customProg, geoLR, wheelTravel, shockStroke, N = 200) {
-  if (!geoLR || shockSagPct <= 0) return 0
-  const shockTarget = shockSagPct * shockStroke
-  const dx = wheelTravel / N
-  let shockAcc = 0
-  for (let i = 0; i < N; i++) {
-    const t = (i + 0.5) / N
-    const lr = lrAtTravelFrac(t, preset, customProg, geoLR)
-    const newAcc = shockAcc + dx / lr
-    if (newAcc >= shockTarget) {
-      const frac = (shockTarget - shockAcc) / (newAcc - shockAcc)
-      return (i + frac) * dx
-    }
-    shockAcc = newAcc
-  }
-  return wheelTravel
-}
-
-// Resolve user's sag input (shock or wheel) into all four representations
-function resolveSag(sagInput, sagMode, preset, customProg, geoLR, wheelTravel, shockStroke) {
-  if (!geoLR || !wheelTravel || !shockStroke) {
-    return { wheelSagPct: 0, shockSagPct: 0, wheelSagMm: 0, shockSagMm: 0 }
-  }
-  if (sagMode === 'wheel') {
-    const wheelSagPct = sagInput
-    const wheelSagMm = wheelSagPct * wheelTravel
-    const shockSagMm = shockDispFromWheelSag(wheelSagPct, preset, customProg, geoLR, wheelTravel)
-    const shockSagPct = shockSagMm / shockStroke
-    return { wheelSagPct, shockSagPct, wheelSagMm, shockSagMm }
-  } else {
-    const shockSagPct = sagInput
-    const shockSagMm = shockSagPct * shockStroke
-    const wheelSagMm = wheelDispFromShockSag(shockSagPct, preset, customProg, geoLR, wheelTravel, shockStroke)
-    const wheelSagPct = wheelSagMm / wheelTravel
-    return { wheelSagPct, shockSagPct, wheelSagMm, shockSagMm }
-  }
-}
-
-// Numerically integrate shock displacement through the stroke using variable LR,
-// then compute force at wheel at each travel point. Spring rate derived from
-// instantaneous LR at sag and shock displacement at sag (correct physics).
-function computeForceCurve(preset, customProg, geoLR, wheelTravel, shockStroke, wheelSagPct, riderKg, rearFrac, N = 20) {
-  if (!geoLR) return Array(N + 1).fill(0)
-  const lrAtSag = lrAtTravelFrac(wheelSagPct, preset, customProg, geoLR)
-  const shockSagMm = shockDispFromWheelSag(wheelSagPct, preset, customProg, geoLR, wheelTravel)
-  if (!shockSagMm) return Array(N + 1).fill(0)
-  const k = (riderKg * G * rearFrac * lrAtSag) / shockSagMm // N/mm
-  const pts = []
-  let shockDisp = 0
-  for (let i = 0; i <= N; i++) {
-    if (i > 0) {
-      const t_mid = (i - 0.5) / N
-      const lr_t = lrAtTravelFrac(t_mid, preset, customProg, geoLR)
-      shockDisp += (wheelTravel / N) / lr_t
-    }
-    const lr_t = lrAtTravelFrac(i / N, preset, customProg, geoLR)
-    pts.push(Math.round(k * shockDisp / lr_t))
-  }
-  return pts
-}
+const fmtPct = (mod) => `${mod >= 1 ? '+' : ''}${((mod - 1) * 100).toFixed(1)}%`
 
 function getBiasZone(pct) {
   if (pct < 58) return BIAS_ZONES[0]
@@ -188,17 +92,23 @@ function getSagZone(pct) {
   return SAG_ZONES[3]
 }
 
-// Portal-rendered tooltip — always mounts as a direct child of <body> with
-// position:fixed, so it's never trapped by an ancestor's overflow/stacking
-// context. Placement is computed in two passes: an instant guess on show
-// (using the trigger's position), then corrected once the portal has
-// actually rendered and its real height is known — long tooltips near the
-// top of the page flip to below instead of running off the top edge.
-function Tip({ text, children, width = 220 }) {
+// Portal-rendered tooltip: mounts as a direct child of <body> with
+// position:fixed, so no ancestor's overflow or stacking context can trap it.
+// Placement is a first guess from the trigger's position, corrected once the
+// portal has rendered and its real height is known (long tooltips near the
+// top of the page flip below instead of running off the top edge).
+//
+// Mouse users get it on hover everywhere. `interactive` hosts (the ⓘ icons,
+// which carry the actual explanations) also open on tap and from the
+// keyboard; tooltips wrapped around buttons stay hover-only so tapping the
+// button doesn't also pop a tooltip.
+function Tip({ text, children, width = 220, interactive = false }) {
   const ref = useRef(null)
   const portalRef = useRef(null)
   const flippedRef = useRef(false)
-  const [pos, setPos] = useState(null) // { left, top, placement, w } or null = hidden
+  const pointerRef = useRef('mouse')
+  const tipId = useId()
+  const [pos, setPos] = useState(null) // { left, top, bottom, placement, w } or null = hidden
 
   const place = () => {
     const el = ref.current
@@ -209,36 +119,66 @@ function Tip({ text, children, width = 220 }) {
     let left = r.left + r.width / 2
     left = Math.min(Math.max(left, w / 2 + margin), window.innerWidth - w / 2 - margin)
     flippedRef.current = false
-    // Initial guess — corrected against the portal's real height below.
     const placement = r.top > 150 ? 'above' : 'below'
     setPos({ left, top: r.top, bottom: r.bottom, placement, w })
   }
   const hide = () => setPos(null)
+  const toggle = () => (pos ? hide() : place())
 
   useEffect(() => {
     if (!pos || !portalRef.current || flippedRef.current) return
     const pr = portalRef.current.getBoundingClientRect()
-    const margin = 10
-    // Placed above but it would clip the top of the viewport — flip once.
-    if (pos.placement === 'above' && pr.top < margin) {
+    if (pos.placement === 'above' && pr.top < 10) {
       flippedRef.current = true
       setPos((p) => (p ? { ...p, placement: 'below' } : p))
     }
   }, [pos])
 
+  // While open: Escape closes, and so does a tap or click anywhere else.
+  useEffect(() => {
+    if (!pos) return
+    const onKey = (e) => { if (e.key === 'Escape') hide() }
+    const onDown = (e) => {
+      if (ref.current?.contains(e.target) || portalRef.current?.contains(e.target)) return
+      hide()
+    }
+    document.addEventListener('keydown', onKey)
+    document.addEventListener('pointerdown', onDown)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('pointerdown', onDown)
+    }
+  }, [pos])
+
+  const hostProps = {
+    onPointerDown: (e) => { pointerRef.current = e.pointerType },
+    onPointerEnter: (e) => { if (e.pointerType === 'mouse') place() },
+    onPointerLeave: (e) => { if (e.pointerType === 'mouse') hide() },
+  }
+  if (interactive) {
+    Object.assign(hostProps, {
+      tabIndex: 0,
+      role: 'button',
+      'aria-label': 'More info',
+      'aria-expanded': !!pos,
+      'aria-describedby': pos ? tipId : undefined,
+      // Taps toggle; mouse clicks are left alone since hover already shows it.
+      onClick: (e) => { if (pointerRef.current !== 'mouse') { e.preventDefault(); e.stopPropagation(); toggle() } },
+      // Only keyboard focus opens it; focus from a tap is handled by onClick.
+      onFocus: (e) => { if (e.target.matches(':focus-visible')) place() },
+      onBlur: hide,
+      onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle() } },
+    })
+  }
+
   return (
-    <span
-      ref={ref}
-      className="tip-host"
-      onMouseEnter={place}
-      onMouseLeave={hide}
-      onFocus={place}
-      onBlur={hide}
-    >
+    <span ref={ref} className={`tip-host${interactive ? ' tip-interactive' : ''}`} {...hostProps}>
       {children}
       {pos && createPortal(
         <div
           ref={portalRef}
+          id={tipId}
+          role="tooltip"
           className="tip-portal"
           style={{
             left: pos.left, width: pos.w,
@@ -255,7 +195,19 @@ function Tip({ text, children, width = 220 }) {
 }
 
 function InfoIcon({ text, width }) {
-  return <Tip text={text} width={width}><span className="info-icon">ⓘ</span></Tip>
+  return <Tip text={text} width={width} interactive><span className="info-icon" aria-hidden="true">ⓘ</span></Tip>
+}
+
+// Rotating caret used by the fold-out blocks (preload, measured sag).
+function Chevron({ open }) {
+  return (
+    <span className={`fold-chevron${open ? ' fold-chevron-open' : ''}`} aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
+        strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="6 15 12 9 18 15" />
+      </svg>
+    </span>
+  )
 }
 
 function InputField({ label, value, onChange, unit, min, max, step, tip, dim }) {
@@ -344,7 +296,7 @@ function stateToQuery({ vals, sagPct, sagMode, linkageId, customProg, customPres
   return p.toString()
 }
 
-export default function SpringCalculator() {
+export default function SpringCalculator({ requestedBike = null }) {
   const initial = useMemo(() => parseUrlState(), [])
   const [vals, setVals] = useState(initial.vals ?? DEFAULTS)
   const [sagPct, setSagPct] = useState(initial.sagPct ?? 0.30) // raw slider value (interpreted via sagMode)
@@ -357,6 +309,11 @@ export default function SpringCalculator() {
   const [preloadMm, setPreloadMm] = useState(initial.preloadMm ?? 0) // optional preload fine-tune
   const [preloadOpen, setPreloadOpen] = useState(!!initial.preloadMm) // collapsed unless a shared link sets preload
   const [shareStatus, setShareStatus] = useState('idle') // idle | copied
+  // "Check your measured sag": the rider's current spring and o-ring reading
+  const [checkOpen, setCheckOpen] = useState(false)
+  const [checkSpring, setCheckSpring] = useState('')
+  const [checkSagMm, setCheckSagMm] = useState('')
+  const [checkPreload, setCheckPreload] = useState('')
 
   // A user-entered 3-point leverage curve becomes a preset with points at
   // 0/50/100% travel. Only the shape (ratio through the curve) is used, so the
@@ -392,6 +349,13 @@ export default function SpringCalculator() {
       clearCurve()
     }
   }
+
+  // The bike comparison below can hand a bike to the calculator. The request
+  // carries a counter so picking the same bike twice still re-applies it.
+  useEffect(() => {
+    if (requestedBike?.id) selectBike(requestedBike.id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestedBike])
 
   const set = (k) => (v) => setVals((p) => ({ ...p, [k]: v }))
   const displayWeight = (kg) => weightLbs ? Math.round(kg * 2.20462 * 10) / 10 : Math.round(kg * 10) / 10
@@ -467,28 +431,51 @@ export default function SpringCalculator() {
     const lbin = nmm ? nmmToLbin(nmm) : null
     const rearForceN = riderKg * G * rearFrac
 
-    // Preload as an optional fine-tune layer. Spring rate above is the zero-preload
-    // rate that hits target sag — the correct baseline. Here we show how the nearest
-    // stock size lands vs target and the collar wind to reach it. Preload only shifts
-    // the force curve (ride height); it does not change rate. Winding X mm of preload
-    // reduces shock sag by exactly X mm, so this is a first-order (LR-at-sag) result.
+    // Nearby stock springs and the sag each one actually lands at. Solved
+    // exactly (the leverage ratio moves with sag), so this is the number you'd
+    // read off the o-ring, not a ratio estimate.
+    const solveSag = (kNmm, preloadMm = 0) =>
+      sagForRate(kNmm, rearForceN, preset, effProg, geoLR, vals.wheelTravel, effStroke, preloadMm)
+    const toModePct = (shockMm) => {
+      if (shockMm == null) return null
+      if (sagMode === 'shock') return shockMm / effStroke
+      return resolveSag(shockMm / effStroke, 'shock', preset, effProg, geoLR, vals.wheelTravel, effStroke).wheelSagPct
+    }
+    let springOptions = []
+    if (lbin) {
+      const base = Math.round(lbin / 25) * 25
+      springOptions = [-50, -25, 0, 25, 50]
+        .map((d) => base + d)
+        .filter((r) => r > 0)
+        .map((rate) => ({ rate, sagPct: toModePct(solveSag(lbinToNmm(rate))), nearest: rate === base }))
+    }
+
+    // Preload as an optional fine-tune layer. The headline rate is the
+    // zero-preload rate that hits target sag. Preload only shifts the force
+    // curve (ride height), it does not change rate. The wind needed to put a
+    // stock spring exactly on target is exact: at the target position LR is
+    // known, so k·(d + p) = F·LR(d) gives p = d·(k_exact/k − 1).
     let preload = null
     if (lbin && nmm && userSag.shockSagMm) {
       const nearestLbin = Math.round(lbin / 25) * 25
-      const kStockNmm = nearestLbin / nmmToLbin(1) // lb/in → N/mm via the same constant
+      const kStockNmm = lbinToNmm(nearestLbin)
       const dTarget = userSag.shockSagMm
-      const dStock0 = dTarget * nmm / kStockNmm // stock spring's standalone shock sag (mm)
-      const stockSagPct = effStroke ? dStock0 / effStroke : null
-      const toTargetMm = dStock0 - dTarget // >0 → wind preload in; <0 → top-out gap
-      preload = { nearestLbin, kStockNmm, dTarget, dStock0, stockSagPct, toTargetMm }
+      const dStock0 = solveSag(kStockNmm)
+      const stockSagPct = toModePct(dStock0)
+      const toTargetMm = dTarget * (nmm / kStockNmm - 1) // >0 → wind preload in; <0 → top-out gap
+      preload = { nearestLbin, kStockNmm, dTarget, dStock0, stockSagPct, toTargetMm, solveSag, toModePct }
     }
 
     const chartPresets = LINKAGE_PRESETS.filter(p => CHART_PRESET_IDS.includes(p.id))
     // For each comparison curve, resolve sag using that preset's own LR curve
     const neutralSag = resolveSag(sagPct, sagMode, null, null, geoLR, vals.wheelTravel, effStroke)
     const neutralPts = computeForceCurve(null, null, geoLR, vals.wheelTravel, effStroke, neutralSag.wheelSagPct, riderKg, rearFrac)
+    // Each type's correction at the rider's own sag, computed rather than
+    // quoted, so tooltips and the explainer can never disagree with the math.
+    const typeMods = {}
     const presetPts = chartPresets.map(p => {
       const pSag = resolveSag(sagPct, sagMode, p, null, geoLR, vals.wheelTravel, effStroke)
+      typeMods[p.id] = geoLR ? lrAtTravelFrac(pSag.wheelSagPct, p, null, geoLR) / geoLR : 1
       return computeForceCurve(p, null, geoLR, vals.wheelTravel, effStroke, pSag.wheelSagPct, riderKg, rearFrac)
     })
     // Active override curve (measured bike or 3-point custom) gets its own series
@@ -538,7 +525,7 @@ export default function SpringCalculator() {
       parseFloat((Math.max(...allLRs) * 1.04).toFixed(2)),
     ]
 
-    return { riderKg, geoLR, effectiveLR, linkageMod, rearForceN, nmm, lbin, curveData, yDomain, yDomainClamped, lrDomain, userSag, effStroke, usesAbsCurve, preload }
+    return { riderKg, geoLR, effectiveLR, linkageMod, rearForceN, nmm, lbin, curveData, yDomain, yDomainClamped, lrDomain, userSag, effStroke, usesAbsCurve, preload, springOptions, typeMods, preset, effProg, lrAtSag }
   }, [vals, sagPct, sagMode, linkageId, customProg, overridePreset])
 
   // Zone is always classified against shock sag conventions (XC/Trail/Enduro/DH)
@@ -546,16 +533,153 @@ export default function SpringCalculator() {
   const biasZone = getBiasZone(vals.rearPct)
   const activePreset = LINKAGE_PRESETS.find((p) => p.id === linkageId)
 
+  // ── Check your measured sag ──
+  // Works backwards from an o-ring reading. The spring force at that sag,
+  // divided by the leverage ratio there, is the load actually on the rear
+  // wheel, which replaces the rear-weight-bias guess with a measurement.
+  // From that load we size the spring for the rider's target sag.
+  const check = useMemo(() => {
+    const rate = parseFloat(checkSpring), d = parseFloat(checkSagMm)
+    const p = parseFloat(checkPreload) || 0
+    if (!(rate > 0) || !(d > 0) || !calc.geoLR || !calc.effStroke || !calc.userSag.shockSagMm) return null
+    if (d >= calc.effStroke) return { error: `That's past the full ${calc.effStroke.toFixed(1)} mm of shock stroke.` }
+    const { lr } = lrAtShockMm(d, calc.preset, calc.effProg, calc.geoLR, vals.wheelTravel, calc.effStroke)
+    const wheelForceN = (lbinToNmm(rate) * (d + p)) / lr
+    const bias = wheelForceN / G / vals.riderWeightKg
+    const recLbin = nmmToLbin((wheelForceN * calc.lrAtSag) / calc.userSag.shockSagMm)
+    return {
+      rate, measuredPct: d / calc.effStroke, wheelForceN, bias, recLbin,
+      recStock: Math.round(recLbin / 25) * 25,
+      plausible: bias >= 0.5 && bias <= 0.82,
+    }
+  }, [checkSpring, checkSagMm, checkPreload, calc, vals.wheelTravel, vals.riderWeightKg])
+
+  // ── Mobile result bar ──
+  // On a phone the inputs stack above the result, so while you're adjusting
+  // inputs the answer is off-screen. A fixed bar shows it until the real
+  // result scrolls into view.
+  const rateRef = useRef(null)
+  const inputsRef = useRef(null)
+  const [rateVisible, setRateVisible] = useState(true)
+  const [inputsVisible, setInputsVisible] = useState(false)
+  useEffect(() => {
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((e) => {
+        if (e.target === rateRef.current) setRateVisible(e.isIntersecting)
+        else if (e.target === inputsRef.current) setInputsVisible(e.isIntersecting)
+      })
+    })
+    if (rateRef.current) io.observe(rateRef.current)
+    if (inputsRef.current) io.observe(inputsRef.current)
+    return () => io.disconnect()
+  }, [])
+  const showBar = inputsVisible && !rateVisible && !!calc.lbin
+
+  const nearestStock = calc.lbin ? Math.round(calc.lbin / 25) * 25 : null
+  const sagLabel = `${sagMode} sag`
+  const targetPct = Math.round(sagPct * 100)
+  const pct0 = (x) => Math.round(x * 100)
+  const pct1 = (x) => (x * 100).toFixed(1)
+  const hasCurve = !!(linkageId || customProg !== null || overridePreset)
+  const curveColor = activeBike ? BIKE_COLOR : activePreset?.color || zone.color
+  const typeLabel = (id) => SUSPENSION_TYPES.find((t) => t.presetId === id)?.label
+  const bikeProg = (bk) => Math.round(((bk.points[0].lr - bk.points.at(-1).lr) / bk.points[0].lr) * 100)
+  const weightOut = (kg) => (weightLbs ? `${Math.round(kg * 2.20462)} lb` : `${Math.round(kg)} kg`)
+
+  const typeTip = (type, p) => {
+    const b = p.bike
+    const n = ((calc.typeMods[p.id] ?? 1) - 1) * 100
+    const mag = Math.abs(n).toFixed(1)
+    return `${type.examples}\n\n${type.shape} Shape from the measured ${b.name} (${b.points[0].lr.toFixed(2)} → ${b.points.at(-1).lr.toFixed(2)}, ${p.prog}% progression).\n\nAt your current sag the leverage ratio is ${mag}% ${n >= 0 ? 'above' : 'below'} its average, so the spring needs about ${mag}% ${n >= 0 ? 'more' : 'less'} than travel ÷ stroke suggests.`
+  }
+
   return (
+    <>
       <div className="calc-grid">
 
         {/* ── Inputs ── */}
-        <div className="calc-inputs card">
+        <div className="calc-inputs card" ref={inputsRef}>
           <div className="card-title">Inputs</div>
 
-          {/* ── Essential three ── */}
-          <div className="input-group-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span>Rider Weight</span>
+          {/* ── Bike: a measured curve is the fastest route to a right answer ── */}
+          <div className="input-group-header">
+            <span>
+              Bike
+              <InfoIcon width={290} text={"Measured leverage curves for specific bikes, from published Avalanche, Linkage Design and Blister data. Picking one loads its curve and fills in travel and stroke.\n\nNot listed? Pick its suspension type below, or enter three points off its leverage graph under Refine."} />
+            </span>
+          </div>
+          <select
+            className={`bike-select bike-select-full ${activeBike ? 'bike-select-active' : ''}`}
+            value={bikeId ?? ''}
+            onChange={(e) => selectBike(e.target.value)}
+            aria-label="Bike"
+          >
+            <option value="">Choose your bike…</option>
+            {BIKE_PRESETS.map((bk) => (
+              <option key={bk.id} value={bk.id}>{bk.name} ({bk.year})</option>
+            ))}
+          </select>
+          <div className="bike-note">
+            {activeBike
+              ? <>Measured curve loaded: {bikeProg(activeBike)}% progression.</>
+              : <>{BIKE_PRESETS.length} measured bikes so far. Not listed? Pick its type below, or{' '}
+                  <a className="bike-request" href="mailto:hello@solitairedynamics.com?subject=Bike%20request%20for%20the%20spring%20calculator">request it</a>.</>}
+          </div>
+
+          {!activeBike && (
+            <>
+              <div className="input-label sub-label">
+                Suspension type
+                <InfoIcon width={300} text={`"Geometric" uses raw travel ÷ stroke with no linkage correction, the same assumption Fox and MRP calculators make. Picking a type corrects for where the leverage ratio sits at your sag point compared with its average.`} />
+              </div>
+              <div className="linkage-tabs">
+                <Tip text="Raw travel ÷ stroke, no linkage correction. The same assumption Fox and MRP calculators make. Use it if you don't know your bike's layout." width={280}>
+                  <button
+                    type="button"
+                    className={`linkage-tab ${!hasCurve ? 'linkage-tab-active' : ''}`}
+                    onClick={() => { setLinkageId(null); setCustomProg(null); clearCurve(); setBikeId(null) }}
+                  >
+                    <span className="lt-dot" style={{ background: 'var(--text-dim)' }} />
+                    <span className="lt-name">Geometric</span>
+                  </button>
+                </Tip>
+                {SUSPENSION_TYPES.map((type) => {
+                  const p = LINKAGE_PRESETS.find((pr) => pr.id === type.presetId)
+                  if (!p) return null
+                  const active = linkageId === p.id
+                  return (
+                    <Tip key={p.id} text={typeTip(type, p)} width={300}>
+                      <button
+                        type="button"
+                        className={`linkage-tab ${active ? 'linkage-tab-active' : ''}`}
+                        style={active ? { borderColor: p.color, boxShadow: `0 0 0 1px ${p.color}` } : {}}
+                        onClick={() => { setLinkageId(active ? null : p.id); setCustomProg(null); clearCurve(); setBikeId(null) }}
+                      >
+                        <span className="lt-dot" style={{ background: p.color }} />
+                        <span className="lt-name" style={active ? { color: p.color } : {}}>{type.label}</span>
+                      </button>
+                    </Tip>
+                  )
+                })}
+              </div>
+            </>
+          )}
+
+          <InputField
+            label="Wheel Travel"
+            tip="Total rear wheel travel from full extension to full compression. Found in your bike's spec sheet."
+            value={vals.wheelTravel} onChange={set('wheelTravel')} unit="mm" min={50} max={300} step={5}
+          />
+          <InputField
+            label="Shock Stroke"
+            tip="How far the shock shaft travels. Usually printed on the shock body (e.g. '55mm'). Not the same as eye-to-eye length."
+            value={vals.shockStroke} onChange={set('shockStroke')} unit="mm" min={20} max={120} step={0.5}
+            dim={!!customPreset}
+          />
+
+          {/* ── Rider ── */}
+          <div className="input-group-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
+            <span>Rider</span>
             <div className="unit-pill">
               <button className={`unit-pill-btn ${!weightLbs ? 'unit-pill-active' : ''}`} onClick={() => setWeightLbs(false)}>kg</button>
               <button className={`unit-pill-btn ${weightLbs ? 'unit-pill-active' : ''}`} onClick={() => setWeightLbs(true)}>lbs</button>
@@ -567,17 +691,6 @@ export default function SpringCalculator() {
             value={displayWeight(vals.riderWeightKg)}
             onChange={(v) => set('riderWeightKg')(toKg(v))}
             unit={wUnit} min={weightLbs ? 66 : 30} max={weightLbs ? 440 : 200} step={weightLbs ? 1 : 0.5}
-          />
-          <InputField
-            label="Wheel Travel"
-            tip="Total rear wheel travel from full extension to full compression. Found in your bike's spec sheet."
-            value={vals.wheelTravel} onChange={set('wheelTravel')} unit="mm" min={50} max={300} step={5}
-          />
-          <InputField
-            label="Shock Stroke"
-            tip="How far the shock shaft travels. Usually printed on the shock body (e.g. '55mm'). Not the same as eye-to-eye length."
-            value={vals.shockStroke} onChange={set('shockStroke')} unit="mm" min={20} max={120} step={0.5}
-            dim={!!customPreset}
           />
 
           {/* ── Tune divider ── */}
@@ -676,10 +789,7 @@ export default function SpringCalculator() {
           </div>
           {selectedPreset && customProg === null && (
             <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-dim)', marginBottom: 6, paddingLeft: 2 }}>
-              {selectedPreset.prog !== null && selectedPreset.prog !== undefined
-                ? <>Typical for this type: <span style={{ color: activePreset?.color }}>{selectedPreset.prog}%</span> — override below if you know your bike's actual figure</>
-                : <>This type has an S-shaped curve — progression varies through travel, a single % doesn't apply</>
-              }
+              From the measured {selectedPreset.bike.name}: <span style={{ color: selectedPreset.color }}>{selectedPreset.prog}%</span>. Override below if you know your own bike's figure.
             </div>
           )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -736,13 +846,19 @@ export default function SpringCalculator() {
           </div>
         </div>
 
-        {/* ── Results + Linkage ── */}
+        {/* ── Results ── */}
         <div className="calc-outputs card">
-          <div className="card-title">Results</div>
+          <div className="card-title results-title">
+            <span>Results</span>
+            <Tip text="Copy a link that opens this calculator with your exact inputs, for sharing a setup or saving it for later." width={240}>
+              <button type="button" className={`share-btn${shareStatus === 'copied' ? ' share-btn-done' : ''}`} onClick={copyShareLink}>
+                {shareStatus === 'copied' ? '✓ Copied' : '↗ Share link'}
+              </button>
+            </Tip>
+          </div>
 
-          {/* ── Spring rate — the answer ── */}
           <div className="results-rate">
-            <div className="big-rate-row">
+            <div className="big-rate-row" ref={rateRef}>
               <span className="big-rate-num" style={{ color: zone.color }}>{calc.lbin ? Math.round(calc.lbin) : '—'}</span>
               <span className="big-rate-unit">lb/in</span>
               <span className="big-rate-divider"> / </span>
@@ -751,177 +867,185 @@ export default function SpringCalculator() {
             </div>
             <div className="big-rate-zone" style={{ color: zone.color }}>{zone.label} setup</div>
             {calc.lbin && (
-              <div style={{ fontSize: 11, color: 'var(--text-dim)', marginBottom: 6 }}>
+              <div className="rate-sentence">
                 The linear coil rate that puts you at {Math.round(calc.userSag.shockSagPct * 100)}% shock sag on this bike.
               </div>
             )}
-            {calc.lbin && (
-              <div className="rate-nearest" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                <span>
-                  Nearest stock: <strong>{Math.round(calc.lbin / 25) * 25} lb/in</strong>
-                  <InfoIcon text={"Spring rates are sold in 25 lb/in steps (Fox, RockShox) or 50 lb/in steps (Cane Creek).\n\nPreload bridges the gap between sizes, but it shifts ride height (sag), not the rate itself — winding the collar just moves where the spring sits. See the preload line below for the wind needed to land this size on your target sag.\n\nWhen in doubt, size up and back the collar off to reach your sag."} width={290} />
-                </span>
-                <Tip text="Copy a link that opens this calculator with your exact inputs — useful for sharing setups on forums or saving for later." width={240}>
-                  <button
-                    onClick={copyShareLink}
-                    style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: shareStatus === 'copied' ? 'var(--green, #00c97a)' : 'var(--text-dim)', background: 'none', border: '1px solid var(--border)', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', whiteSpace: 'nowrap', letterSpacing: '0.05em', textTransform: 'uppercase' }}
-                  >
-                    {shareStatus === 'copied' ? '✓ Copied' : '↗ Share link'}
-                  </button>
-                </Tip>
+
+            {/* ── Stock springs, and the sag each one actually gives ── */}
+            {calc.springOptions.length > 0 && (
+              <div className="spring-options">
+                <div className="spring-options-label">
+                  Stock springs (lb/in) · {sagLabel}
+                  <InfoIcon width={290} text={"Where each stock spring actually puts you. Solved at each spring's own sag point, since the leverage ratio changes as the bike sits deeper.\n\nMost brands sell in 25 lb/in steps, Cane Creek in 50. Stamped rates can be a few percent off."} />
+                </div>
+                <div className="spring-options-row">
+                  {calc.springOptions.map((o) => (
+                    <span key={o.rate} className={`spring-opt${o.nearest ? ' spring-opt-nearest' : ''}`}
+                      style={o.nearest ? { color: zone.color } : undefined}>
+                      <span className="spring-opt-rate">{o.rate}</span> → {o.sagPct != null ? `${pct1(o.sagPct)}%` : '—'}
+                    </span>
+                  ))}
+                </div>
               </div>
             )}
 
             {/* ── Preload fine-tune (optional layer on top of the sag-anchored rate) ── */}
             {calc.preload && (() => {
               const pl = calc.preload
-              const target = Math.round(calc.userSag.shockSagPct * 100)
-              const resultMm = pl.dStock0 - preloadMm
-              const resultPct = calc.effStroke ? Math.round((resultMm / calc.effStroke) * 100) : null
+              const resultMm = pl.solveSag(pl.kStockNmm, preloadMm)
+              const resultPct = pl.toModePct(resultMm)
               const forceLb = Math.round(pl.kStockNmm * preloadMm * 0.224809)
               const toTargetLb = Math.round(pl.kStockNmm * pl.toTargetMm * 0.224809)
-              const collapsedHint = pl.toTargetMm >= 0.15
+              const hint = pl.toTargetMm >= 0.15
                 ? `wind ~${pl.toTargetMm.toFixed(1)}mm to target`
-                : pl.toTargetMm <= -0.15
-                  ? `~${Math.abs(pl.toTargetMm).toFixed(1)}mm gap to target`
-                  : 'lands on target'
+                : pl.toTargetMm <= -0.15 ? `~${Math.abs(pl.toTargetMm).toFixed(1)}mm gap to target` : 'lands on target'
               return (
-                <div className="preload-block">
-                  <button
-                    type="button" className="preload-head"
-                    onClick={() => setPreloadOpen((o) => !o)}
-                    aria-expanded={preloadOpen}
-                  >
-                    <span className={`preload-chevron${preloadOpen ? ' preload-chevron-open' : ''}`} aria-hidden="true">
-                      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
-                        strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="6 15 12 9 18 15" />
-                      </svg>
-                    </span>
-                    Preload <span className="preload-tag">optional</span>
-                    {!preloadOpen && <span className="preload-collapsed-hint">· {collapsedHint}</span>}
-                    <span className="preload-info" onClick={(e) => e.stopPropagation()}>
-                      <InfoIcon width={300} text={"Preload pre-compresses the spring by winding the collar. It does NOT change spring rate — it shifts the whole force curve up, so it only moves ride height (sag). Winding X mm of preload reduces shock sag by X mm on any spring.\n\nUse it to land the nearest stock size on your sag, not as a substitute for rate. Most coil shocks cap around 2-3 turns (~5mm) to stay clear of coil bind. Negative = a top-out gap (collar backed off / spring a hair short of installed length)."} />
-                    </span>
-                  </button>
+                <div className="fold-block">
+                  <div className="fold-head-row">
+                    <button type="button" className="fold-head" onClick={() => setPreloadOpen((o) => !o)} aria-expanded={preloadOpen}>
+                      <Chevron open={preloadOpen} />
+                      Preload <span className="fold-tag">optional</span>
+                      {!preloadOpen && <span className="fold-collapsed-hint">· {hint}</span>}
+                    </button>
+                    <InfoIcon width={300} text={"Preload pre-compresses the spring by winding the collar. It does NOT change spring rate. It shifts the whole force curve up, so it only moves ride height (sag). Winding X mm of preload reduces shock sag by X mm on any spring.\n\nUse it to land the nearest stock size on your sag, not as a substitute for rate. Most coil shocks cap around 2-3 turns (~5mm) to stay clear of coil bind. Negative = a top-out gap (collar backed off, or a spring a hair short of installed length)."} />
+                  </div>
                   {preloadOpen && (
                     <>
-                      <div className="preload-suggest">
-                        {pl.nearestLbin} lb/in sits at <strong>~{Math.round(pl.stockSagPct * 100)}%</strong> shock sag on its own.{' '}
+                      <div className="fold-suggest">
+                        {pl.nearestLbin} lb/in sits at <strong>{pct1(pl.stockSagPct)}%</strong> {sagLabel} on its own.{' '}
                         {pl.toTargetMm >= 0.15
-                          ? <>Wind <strong>~{pl.toTargetMm.toFixed(1)}mm</strong> (≈{toTargetLb} lb) to reach {target}%.</>
+                          ? <>Wind <strong>~{pl.toTargetMm.toFixed(1)}mm</strong> (≈{toTargetLb} lb) to reach {targetPct}%.</>
                           : pl.toTargetMm <= -0.15
-                            ? <>Back off <strong>~{Math.abs(pl.toTargetMm).toFixed(1)}mm</strong> (top-out gap) for {target}%, or just run it as-is.</>
-                            : <>Lands right on your {target}% target.</>}
+                            ? <>Back off <strong>~{Math.abs(pl.toTargetMm).toFixed(1)}mm</strong> (top-out gap) for {targetPct}%, or just run it as-is.</>
+                            : <>Lands right on your {targetPct}% target.</>}
                       </div>
-                      <div className="preload-row">
-                        <label>Try preload</label>
-                        <div className="preload-input-wrap">
-                          <input
-                            type="number" step={0.5} value={preloadMm}
-                            onChange={(e) => { const v = parseFloat(e.target.value); setPreloadMm(isNaN(v) ? 0 : v) }}
-                          />
-                          <span className="preload-unit">mm</span>
+                      <div className="fold-row">
+                        <label htmlFor="preload-mm">Try preload</label>
+                        <div className="fold-input-wrap">
+                          <input id="preload-mm" type="number" step={0.5} value={preloadMm}
+                            onChange={(e) => { const v = parseFloat(e.target.value); setPreloadMm(isNaN(v) ? 0 : v) }} />
+                          <span className="fold-unit">mm</span>
                         </div>
-                        <span className="preload-out">
-                          → <strong>{resultPct}%</strong> sag ({Math.round(resultMm)}mm){preloadMm ? `, ≈${forceLb > 0 ? '+' : ''}${forceLb} lb` : ''}
+                        <span className="fold-out">
+                          → <strong>{resultPct != null ? `${pct1(resultPct)}%` : '—'}</strong> {sagLabel}{resultMm != null ? ` (${resultMm.toFixed(0)} mm at the shock)` : ''}{preloadMm ? `, ≈${forceLb > 0 ? '+' : ''}${forceLb} lb` : ''}
                         </span>
                       </div>
                       {Math.abs(preloadMm) > 5 && (
-                        <div className="preload-warn">Over ~5mm / 2-3 turns — check your shock's stated limit before winding this far.</div>
+                        <div className="fold-warn">Over ~5mm / 2-3 turns. Check your shock's stated limit before winding this far.</div>
                       )}
                     </>
                   )}
                 </div>
               )
             })()}
-            {customProg !== null && (
-              <div style={{ fontSize: 10, color: 'var(--text-dim)', marginBottom: 4, fontFamily: 'var(--font-mono)' }}>
-                custom {customProg}% progression · linear model
+
+            {/* ── Check your measured sag ── */}
+            {calc.lbin && (
+              <div className="fold-block">
+                <div className="fold-head-row">
+                  <button type="button" className="fold-head" onClick={() => setCheckOpen((o) => !o)} aria-expanded={checkOpen}>
+                    <Chevron open={checkOpen} />
+                    Check your measured sag
+                    {!checkOpen && <span className="fold-collapsed-hint">· already running a spring?</span>}
+                  </button>
+                  <InfoIcon width={300} text={"Enter the spring you run and the sag you measure at the shock's o-ring. The spring force at that sag, divided by the leverage ratio there, is the load actually on your rear wheel. That replaces the rear weight bias guess with a measurement, and the spring for your target is sized from it.\n\nBounce a few times and let the bike settle before reading. Seal friction can hold it a few mm high or low."} />
+                </div>
+                {checkOpen && (
+                  <>
+                    <div className="fold-row">
+                      <label htmlFor="check-spring">Spring</label>
+                      <div className="fold-input-wrap">
+                        <input id="check-spring" type="number" inputMode="numeric" step={25} placeholder={nearestStock ?? ''}
+                          value={checkSpring} onChange={(e) => setCheckSpring(e.target.value)} />
+                        <span className="fold-unit">lb/in</span>
+                      </div>
+                      <label htmlFor="check-sag">Sag</label>
+                      <div className="fold-input-wrap">
+                        <input id="check-sag" type="number" inputMode="decimal" step={0.5} placeholder="mm"
+                          value={checkSagMm} onChange={(e) => setCheckSagMm(e.target.value)} />
+                        <span className="fold-unit">mm</span>
+                      </div>
+                      <label htmlFor="check-preload">Preload</label>
+                      <div className="fold-input-wrap">
+                        <input id="check-preload" type="number" inputMode="decimal" step={0.5} placeholder="0"
+                          value={checkPreload} onChange={(e) => setCheckPreload(e.target.value)} />
+                        <span className="fold-unit">mm</span>
+                      </div>
+                    </div>
+                    {!check && (
+                      <div className="fold-suggest">Measured at the shock: how far the o-ring moved from full extension.</div>
+                    )}
+                    {check?.error && <div className="fold-warn">{check.error}</div>}
+                    {check && !check.error && (() => {
+                      const steps = Math.round((check.recStock - check.rate) / 25)
+                      const onTarget = Math.abs(check.recLbin - check.rate) < 12.5
+                      const biasPct = pct0(check.bias)
+                      return (
+                        <>
+                          <div className="fold-suggest">
+                            Your {check.rate} lb/in sits at <strong>{pct1(check.measuredPct)}%</strong> shock sag. That puts
+                            about <strong>{weightOut(check.wheelForceN / G)}</strong> on the rear wheel,{' '}
+                            <strong>{biasPct}%</strong> of your weight{biasPct !== vals.rearPct ? ` (the calculator is assuming ${vals.rearPct}%)` : ''}.{' '}
+                            {onTarget
+                              ? <>That spring is right for {targetPct}% {sagLabel}.</>
+                              : <>For {targetPct}% {sagLabel} you want <strong>{Math.round(check.recLbin)} lb/in</strong>, so
+                                  a {check.recStock}{steps !== 0 ? ` (${Math.abs(steps)} size${Math.abs(steps) > 1 ? 's' : ''} ${steps > 0 ? 'stiffer' : 'softer'})` : ''}.</>}
+                          </div>
+                          {!check.plausible && (
+                            <div className="fold-warn">That's well outside the usual 55–75% rear bias. Re-check the reading, your rider weight, and the spring's stamped rate.</div>
+                          )}
+                          {check.plausible && biasPct !== vals.rearPct && (
+                            <button type="button" className="fold-apply"
+                              onClick={() => set('rearPct')(Math.min(BIAS_MAX, Math.max(BIAS_MIN, biasPct)))}>
+                              Use {biasPct}% rear bias in the calculator
+                            </button>
+                          )}
+                        </>
+                      )
+                    })()}
+                  </>
+                )}
               </div>
             )}
-            {activeBike && (
-              <div style={{ fontSize: 10, color: BIKE_COLOR, marginBottom: 4, fontFamily: 'var(--font-mono)' }}>
-                measured curve · {activeBike.name} ({activeBike.year})
-              </div>
-            )}
+
             <div className="results-meta">
-              <Tip text="Leverage Ratio = wheel travel ÷ shock stroke. Higher LR = shock moves less per mm of wheel travel = stiffer spring needed.">
+              <Tip text="Leverage ratio = wheel travel ÷ shock stroke. The arrow shows the ratio at your sag point for the selected curve, which is what the spring actually works against." width={260}>
                 <span className="results-meta-tip">
                   LR {calc.geoLR ? calc.geoLR.toFixed(2) : '—'}:1
-                  {(linkageId || customProg !== null || overridePreset) && calc.effectiveLR ? <> → <span style={{ color: activeBike ? BIKE_COLOR : activePreset?.color || zone.color }}>{calc.effectiveLR.toFixed(2)}:1</span></> : null}
+                  {hasCurve && calc.effectiveLR ? <> → <span style={{ color: curveColor }}>{calc.effectiveLR.toFixed(2)}:1</span></> : null}
                 </span>
               </Tip>
               <span className="results-meta-sep">·</span>
-              <Tip text="Rider weight × rear bias = force the rear shock must support at sag.">
+              <Tip text="Rider weight × rear bias: the load the rear shock has to hold at sag.">
                 <span className="results-meta-tip">
-                  Rear load {weightLbs
-                    ? `${Math.round(calc.rearForceN / G * 2.20462)} lbs`
-                    : `${Math.round(calc.rearForceN / G)} kg`} · {Math.round(calc.rearForceN)} N
+                  Rear load {weightOut(calc.rearForceN / G)} · {Math.round(calc.rearForceN)} N
                 </span>
               </Tip>
+              {hasCurve && (
+                <>
+                  <span className="results-meta-sep">·</span>
+                  <span style={{ color: curveColor }}>{fmtPct(calc.linkageMod)} linkage correction</span>
+                </>
+              )}
             </div>
-          </div>
-
-
-          {/* ── Suspension Type Selector ── */}
-          <div className="linkage-selector-header" style={{ marginTop: 18 }}>
-            <span className="card-title" style={{ marginBottom: 0, paddingBottom: 0, borderBottom: 'none', fontSize: '10px' }}>
-              Suspension Type
-              <InfoIcon text={`Select your bike's rear suspension type to apply a linkage correction. "Geometric only" uses raw travel ÷ stroke with no progression — the same assumption as Fox and MRP calculators. Selecting a type corrects for where the leverage ratio sits at your sag point vs the travel average.`} width={300} />
-            </span>
-            {(linkageId || customProg !== null || overridePreset) && (
-              <span className="linkage-active-note" style={{ color: activeBike ? BIKE_COLOR : activePreset?.color }}>
-                {calc.linkageMod > 1 ? '+' : ''}{Math.round((calc.linkageMod - 1) * 100)}% spring adjustment
-                {activeBike ? ` · measured ${activeBike.name}` : customPreset ? ' · custom curve' : customProg !== null ? ' · custom %' : ''}
-              </span>
+            {hasCurve && (
+              <div className="curve-source" style={{ color: curveColor }}>
+                {activeBike
+                  ? <>measured curve · {activeBike.name} ({activeBike.year})</>
+                  : customPreset
+                    ? <>your 3-point curve</>
+                    : customProg !== null
+                      ? <>custom {customProg}% progression · linear model</>
+                      : activePreset
+                        ? <>{typeLabel(activePreset.id)} shape · from the measured {activePreset.bike.name}</>
+                        : null}
+              </div>
             )}
           </div>
-          <div className="linkage-tabs">
-            <Tip text="Raw travel ÷ stroke with no progression assumed — same baseline as Fox and MRP calculators. Use this when you don't know your bike's linkage type or you want the geometric-only number." width={280}>
-              <div
-                className={`linkage-tab ${!linkageId && !overridePreset && customProg === null ? 'linkage-tab-active' : ''}`}
-                onClick={() => { setLinkageId(null); setCustomProg(null); clearCurve(); setBikeId(null) }}
-              >
-                <span className="lt-dot" style={{ background: 'var(--text-dim)' }} />
-                <span className="lt-name">Geometric</span>
-              </div>
-            </Tip>
-            {SUSPENSION_TYPES.map((type) => {
-              const p = LINKAGE_PRESETS.find(pr => pr.id === type.presetId)
-              if (!p) return null
-              const active = linkageId === p.id
-              const shortLabel = type.label.split(' /')[0].split(' —')[0]
-              return (
-                <Tip key={p.id} text={`${type.sublabel}\n\n${type.tip}`} width={300}>
-                  <div
-                    className={`linkage-tab ${active ? 'linkage-tab-active' : ''}`}
-                    style={active ? { borderColor: p.color } : {}}
-                    onClick={() => { setLinkageId(active ? null : p.id); setCustomProg(null); clearCurve(); setBikeId(null) }}
-                  >
-                    <span className="lt-dot" style={{ background: p.color }} />
-                    <span className="lt-name" style={active ? { color: p.color } : {}}>{shortLabel}</span>
-                  </div>
-                </Tip>
-              )
-            })}
-            <Tip text={`Measured leverage curves for specific bikes — real kinematic data, not archetypes. Selecting a bike loads its curve and fills in travel and stroke from its spec.\n\nMore bikes added as they're measured.`} width={280}>
-              <select
-                className={`bike-select ${activeBike ? 'bike-select-active' : ''}`}
-                value={bikeId ?? ''}
-                onChange={(e) => selectBike(e.target.value)}
-                aria-label="Measured bike presets"
-              >
-                <option value="">Measured bike…</option>
-                {BIKE_PRESETS.map((bk) => (
-                  <option key={bk.id} value={bk.id}>{bk.name} ({bk.year})</option>
-                ))}
-              </select>
-            </Tip>
-          </div>
 
-          {/* ── Dual charts ── */}
-          <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+          {/* ── Charts ── */}
+          <div className="calc-charts">
             <div className="chart-pair">
 
               {/* A — Spring force (clamped Y so crossing is prominent) */}
@@ -1021,22 +1145,61 @@ export default function SpringCalculator() {
 
             </div>
 
-            {/* ── Explainer below charts ── */}
-            <div style={{ marginTop: 18, padding: '12px 14px', background: 'rgba(255,255,255,0.025)', borderRadius: 6, border: '1px solid var(--border)', fontSize: 12, lineHeight: 1.7, color: 'var(--text-dim)' }}>
-              <div style={{ fontWeight: 600, color: 'var(--text-bright)', marginBottom: 6, fontSize: 12, letterSpacing: '0.01em' }}>
-                Why suspension type changes your spring rate
-              </div>
-              <p style={{ margin: 0 }}>
-                Your spring rate is set so the shock reaches your sag target under your weight. But most linkages have a <em>higher</em> leverage ratio early in the stroke — right where sag sits. That means the spring is working harder at sag than the simple travel÷stroke ratio suggests, so a stiffer spring is required.
+            <div className="calc-explainer">
+              <div className="calc-explainer-title">Why linkage type changes your spring rate</div>
+              <p>
+                Your spring is sized so the shock reaches target sag under your weight. Most linkages have a
+                higher leverage ratio early in the stroke, right where sag sits, so at sag the spring is working
+                harder than travel ÷ stroke suggests and needs to be stiffer.
               </p>
-              <p style={{ margin: '8px 0 0' }}>
-                Selecting a type above applies a correction: it takes the LR at your exact sag point and divides by the travel average. DW-Link bikes need the biggest correction (+14%) because their LR drops most steeply in the first third of travel. High pivot and four-bar types need a moderate correction (+5–6%). Selecting nothing uses raw geometry only — the same assumption Fox and MRP calculators make.
+              <p>
+                At your current sag:{' '}
+                {SUSPENSION_TYPES.map((t, i) => {
+                  const p = LINKAGE_PRESETS.find((pr) => pr.id === t.presetId)
+                  return (
+                    <span key={t.presetId}>
+                      <strong style={{ color: p?.color }}>{t.label} {fmtPct(calc.typeMods[t.presetId] ?? 1)}</strong>
+                      {i < SUSPENSION_TYPES.length - 1 ? ', ' : ''}
+                    </span>
+                  )
+                })}
+                {activeBike ? <>, and the measured <strong style={{ color: BIKE_COLOR }}>{activeBike.name} {fmtPct(calc.linkageMod)}</strong></> : null}.
+                {' '}The correction shrinks as you run more sag, because sag moves deeper into the travel, where the
+                leverage ratio has fallen closer to its average. Geometric applies none, the same assumption Fox and
+                MRP calculators make.
               </p>
             </div>
           </div>
 
+          {/* ── Where to go next ── */}
+          <nav className="next-steps" aria-label="Next setup steps">
+            <span className="next-steps-label">Setup order</span>
+            <span className="next-step next-step-here"><span className="next-step-num">1</span>Spring rate</span>
+            <Link to="/learn/packing" className="next-step"><span className="next-step-num">2</span>Rebound</Link>
+            <Link to="/learn/clickers" className="next-step"><span className="next-step-num">3</span>Compression</Link>
+            <span className="next-steps-note">Damping can't fix the wrong spring, so set it first.</span>
+          </nav>
         </div>
 
       </div>
+
+      {/* ── Mobile result bar ── */}
+      {createPortal(
+        <button
+          type="button"
+          className={`mobile-rate-bar${showBar ? ' is-visible' : ''}`}
+          tabIndex={showBar ? 0 : -1}
+          aria-hidden={!showBar}
+          onClick={() => rateRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+        >
+          <span className="mrb-rate" style={{ color: zone.color }}>
+            {calc.lbin ? Math.round(calc.lbin) : '—'}<small> lb/in</small>
+          </span>
+          <span className="mrb-meta">{targetPct}% {sagLabel}{nearestStock ? ` · nearest ${nearestStock}` : ''}</span>
+          <span className="mrb-go">Details ↓</span>
+        </button>,
+        document.body
+      )}
+    </>
   )
 }
