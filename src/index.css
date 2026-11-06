@@ -1,0 +1,50 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html { overflow-x: hidden; }
+
+:root {
+  --bg: #f6f4f1;
+  --bg2: #ffffff;
+  --bg3: #eeecea;
+  --border: #dedad4;
+  --text: #1e1a17;
+  --text-dim: #6b635c;
+  --text-bright: #1c1814;
+  --green: #1e6e46;
+  --yellow: #b07930;
+  --red: #b83232;
+  --accent: #1d4ed8;
+  --purple: #6d28d9;
+  --font: 'JetBrains Mono', 'Courier New', monospace;
+  /* Alias — 17 call sites across the Learn modules and Tools page request
+     --font-mono for live numbers; without it they fell back to generic mono. */
+  --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 17px;
+  line-height: 1.75;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+#root {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 44px 48px 100px;
+}
+
+@media (max-width: 600px) {
+  body { font-size: 15px; }
+  #root { padding: 24px 18px 64px; }
+}

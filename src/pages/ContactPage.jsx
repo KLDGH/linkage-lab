@@ -1,0 +1,83 @@
+import { Link } from 'react-router-dom'
+import { useDocumentTitle } from '../lib/useDocumentTitle'
+
+export default function ContactPage() {
+  useDocumentTitle('Contact')
+  return (
+    <div className="page">
+      <h1 className="visually-hidden">Contact</h1>
+
+      <div className="contact-layout">
+
+        <div className="contact-main">
+          <div className="contact-card">
+            <div className="contact-method">
+              <span className="contact-method-label">Email</span>
+              <a href="mailto:hello@solitairedynamics.com" className="contact-method-val contact-link">
+                hello@solitairedynamics.com
+              </a>
+              <span className="contact-method-note">Best for service inquiries and mail-in requests</span>
+            </div>
+            <div className="contact-method">
+              <span className="contact-method-label">Instagram</span>
+              <a
+                href="https://instagram.com/solitairedynamics"
+                target="_blank"
+                rel="noreferrer"
+                className="contact-method-val contact-link"
+              >
+                @solitairedynamics
+              </a>
+              <span className="contact-method-note">DMs open, good for quick questions</span>
+            </div>
+            <div className="contact-method">
+              <span className="contact-method-label">Location</span>
+              <span className="contact-method-val">Marin County, CA</span>
+              <span className="contact-method-note">Local drop-off available, email first to coordinate</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="contact-sidebar">
+          <div className="contact-info-block">
+            <h3 className="contact-info-title">About</h3>
+            <p className="contact-info-body">
+              Solitaire Dynamics is a one-person suspension shop. The work is
+              spring rate, valving, shim stacks, and fluid selection, set for a
+              specific rider and bike. The tools on this site are free, and every
+              number they return is one you can check.
+            </p>
+          </div>
+
+          <div className="contact-info-block">
+            <h3 className="contact-info-title">Before you email</h3>
+            <p className="contact-info-body">
+              If you&apos;re asking about spring rate or setup, try the{' '}
+              <Link to="/" className="contact-link">spring calculator</Link>{' '}
+              first. It covers most common questions about spring rate and
+              linkage correction.
+            </p>
+          </div>
+
+          <div className="contact-info-block">
+            <h3 className="contact-info-title">Mail-in inquiries</h3>
+            <p className="contact-info-body">
+              Email us first to confirm scope and get the current ship-to
+              address.
+            </p>
+          </div>
+
+          <div className="contact-info-block">
+            <h3 className="contact-info-title">Turnaround</h3>
+            <p className="contact-info-body">
+              Most jobs are 5–7 business days from receipt. If you have a
+              deadline (race, trip) let us know upfront and we&apos;ll tell you
+              if we can accommodate it.
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  )
+}
