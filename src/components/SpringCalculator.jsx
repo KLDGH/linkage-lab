@@ -308,12 +308,9 @@ export default function SpringCalculator({ requestedBike = null }) {
   const [customProg, setCustomProg] = useState(initial.customProg ?? null) // null = follow preset
   const [curveInput, setCurveInput] = useState(initial.curve ?? { start: '', mid: '', end: '' })
   const [bikeId, setBikeId] = useState(initial.bikeId ?? null) // measured bike preset
-  // Two ways in: a measured bike, or a linkage type plus your own numbers.
-  // A shared link opens on whichever path its parameters describe.
-  const [setupMode, setSetupMode] = useState(() =>
-    initial.bikeId ? 'bike'
-      : (initial.linkageId || initial.customProg != null || initial.curve) ? 'type'
-      : 'bike')
+  // Two ways in: a linkage type plus your own numbers, or a measured bike.
+  // Linkage type is the default; only a link that names a bike opens on bikes.
+  const [setupMode, setSetupMode] = useState(() => (initial.bikeId ? 'bike' : 'type'))
   const [preloadMm, setPreloadMm] = useState(initial.preloadMm ?? 0) // optional preload fine-tune
   const [preloadOpen, setPreloadOpen] = useState(!!initial.preloadMm) // collapsed unless a shared link sets preload
   const [shareStatus, setShareStatus] = useState('idle') // idle | copied
@@ -618,15 +615,15 @@ export default function SpringCalculator({ requestedBike = null }) {
         <div className="calc-inputs card" ref={inputsRef}>
           <div className="card-title">Inputs</div>
 
-          {/* ── Start from a measured bike, or a linkage type plus your own numbers ── */}
+          {/* ── Start from a linkage type plus your own numbers, or a measured bike ── */}
           <div className="setup-toggle" role="group" aria-label="Start from">
-            <button type="button" aria-pressed={setupMode === 'bike'}
-              className={`setup-toggle-btn${setupMode === 'bike' ? ' setup-toggle-on' : ''}`}
-              onClick={() => chooseMode('bike')}>Your bike</button>
-            <span className="setup-toggle-or" aria-hidden="true">or</span>
             <button type="button" aria-pressed={setupMode === 'type'}
               className={`setup-toggle-btn${setupMode === 'type' ? ' setup-toggle-on' : ''}`}
               onClick={() => chooseMode('type')}>Linkage type</button>
+            <span className="setup-toggle-or" aria-hidden="true">or</span>
+            <button type="button" aria-pressed={setupMode === 'bike'}
+              className={`setup-toggle-btn${setupMode === 'bike' ? ' setup-toggle-on' : ''}`}
+              onClick={() => chooseMode('bike')}>Your bike</button>
           </div>
 
           {setupMode === 'bike' && (
@@ -786,7 +783,7 @@ export default function SpringCalculator({ requestedBike = null }) {
           </div>
           <InputField
             label="Rider + Gear"
-            tip="Your body weight plus riding gear. Add ~2-3 kg / 5 lbs for helmet, pads, pack, shoes. E-bike riders: bike weight doesn't affect sag-based calculations, but if you want a more conservative estimate you can fold motor/battery weight (~6-8 kg) in here."
+            tip="Your body weight plus riding gear. Add ~2-3 kg / 5 lbs for helmet, pads, pack, shoes. The bike isn't counted: its sprung weight adds roughly 5-10% to the rear load, more on e-bikes, so add some of it here if you want to account for it."
             value={displayWeight(vals.riderWeightKg)}
             onChange={(v) => set('riderWeightKg')(toKg(v))}
             unit={wUnit} min={weightLbs ? 66 : 30} max={weightLbs ? 440 : 200} step={weightLbs ? 1 : 0.5}
