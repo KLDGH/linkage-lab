@@ -1097,4 +1097,10 @@ a.next-step:hover { border-color: var(--green); color: var(--text-bright); }
   .log-baseline tbody th { grid-column: 1 / -1; padding: 0; }
   .log-cell-label { display: block; font-size: 10px; letter-spacing: 0.04em; color: var(--text-dim); margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .log-form .calc-input { flex-basis: 100%; }
+  /* Fold headers: keep the title on one line and drop the hint beneath it */
+  .fold-head { flex-wrap: wrap; }
+  .fold-collapsed-hint { flex-basis: 100%; padding-left: 21px; }
+  .big-rate-row { gap: 6px; }
+  .big-rate-num { font-size: 26px; }
+  .big-rate-divider { margin: 0; }
 }

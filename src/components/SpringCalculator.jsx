@@ -313,6 +313,7 @@ export default function SpringCalculator({ requestedBike = null }) {
   const [setupMode, setSetupMode] = useState(() => (initial.bikeId ? 'bike' : 'type'))
   const [preloadMm, setPreloadMm] = useState(initial.preloadMm ?? 0) // optional preload fine-tune
   const [preloadOpen, setPreloadOpen] = useState(!!initial.preloadMm) // collapsed unless a shared link sets preload
+  const [progOpen, setProgOpen] = useState(initial.customProg != null || !!initial.curve) // same for the custom curve
   const [shareStatus, setShareStatus] = useState('idle') // idle | copied
   // "Check your measured sag": the rider's current spring and o-ring reading
   const [checkOpen, setCheckOpen] = useState(false)
@@ -706,73 +707,6 @@ export default function SpringCalculator({ requestedBike = null }) {
             dim={!!customPreset}
           />
 
-          {setupMode === 'type' && (
-            <>
-          {/* Progression override */}
-          <div className="input-group-header tune-header" style={{ marginTop: 12 }}>
-            Linkage Progression
-            <InfoIcon text={`End-to-end progression % — how much stiffer the suspension gets from top to bottom of travel. Most trail bikes are 15–25%.\n\nFormula: progression = (LR at top − LR at bottom) ÷ LR at top. A bike going 3.0 → 2.4 is (3.0 − 2.4) / 3.0 = 20%.\n\nThe reference value shown is typical for the selected suspension type. Override with your bike's actual number if you have it. The override uses a linear curve model.`} width={290} />
-          </div>
-          {selectedPreset && customProg === null && (
-            <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-dim)', marginBottom: 6, paddingLeft: 2 }}>
-              This type: <span style={{ color: selectedPreset.color }}>{selectedPreset.prog}%</span>. Override below with your bike's own figure.
-            </div>
-          )}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ flex: 1 }}>
-              <InputField
-                label={customProg !== null ? 'Custom (linear model)' : 'Override (optional)'}
-                value={customProg !== null ? customProg : ''}
-                onChange={(v) => { setCustomProg(Math.max(0, Math.min(50, v))); clearCurve() }}
-                unit="%" min={0} max={50} step={1}
-                tip="Optional. Enter your bike's actual end-to-end progression % from linkage software or manufacturer data. Overrides the suspension type preset with a linear curve model."
-              />
-            </div>
-            {customProg !== null && (
-              <button
-                onClick={() => setCustomProg(null)}
-                style={{ fontSize: 10, color: 'var(--text-dim)', background: 'none', border: '1px solid var(--border)', borderRadius: 4, padding: '3px 7px', cursor: 'pointer', marginTop: 18, whiteSpace: 'nowrap' }}
-              >
-                reset
-              </button>
-            )}
-          </div>
-
-          {/* Custom curve: 3 points the rider enters */}
-          <div style={{ marginTop: 12 }}>
-            <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: customPreset ? 'var(--accent)' : 'var(--text-dim)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-              Or a measured curve (3 pts)
-              <InfoIcon text={`For bikes where you have the leverage numbers off a graph. Read LR at the top, middle, and bottom of travel and enter them here. The calculator uses the three values as entered, and works out the shock stroke they imply from your travel.`} width={290} />
-              {customPreset && (
-                <button onClick={clearCurve} style={{ marginLeft: 'auto', fontSize: 9, color: 'var(--text-dim)', background: 'none', border: '1px solid var(--border)', borderRadius: 4, padding: '2px 6px', cursor: 'pointer' }}>reset</button>
-              )}
-            </div>
-            <div style={{ display: 'flex', gap: 6 }}>
-              {[['start', 'top', '0%'], ['mid', 'mid', '50%'], ['end', 'end', '100%']].map(([field, ph, pos]) => (
-                <div key={field} style={{ flex: 1 }}>
-                  <input
-                    type="number" className="calc-input" style={{ width: '100%', textAlign: 'center', padding: '7px 6px' }}
-                    value={curveInput[field]} placeholder={ph}
-                    onChange={(e) => setCurveField(field)(e.target.value)}
-                    min={1} max={5} step={0.05}
-                  />
-                  <div style={{ fontSize: 9, color: 'var(--text-dim)', textAlign: 'center', marginTop: 3, fontFamily: 'var(--font-mono)' }}>{pos} · LR</div>
-                </div>
-              ))}
-            </div>
-            {customPreset && calc.usesAbsCurve && calc.effStroke && (
-              <div style={{ fontSize: 9.5, fontFamily: 'var(--font-mono)', color: 'var(--text-dim)', marginTop: 7, lineHeight: 1.55 }}>
-                Your numbers are used as-is. With {vals.wheelTravel}mm travel they imply a{' '}
-                <span style={{ color: 'var(--accent)' }}>{calc.effStroke.toFixed(1)}mm stroke</span>, which the calc uses.
-                {Math.abs(calc.effStroke - vals.shockStroke) / vals.shockStroke > 0.04 && (
-                  <span style={{ color: '#f0b429' }}> Your Shock Stroke field says {vals.shockStroke}mm — worth a re-check.</span>
-                )}
-              </div>
-            )}
-          </div>
-            </>
-          )}
-
           {/* ── Rider ── */}
           <div className="input-group-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
             <span>Rider</span>
@@ -783,7 +717,7 @@ export default function SpringCalculator({ requestedBike = null }) {
           </div>
           <InputField
             label="Rider + Gear"
-            tip="Your body weight plus riding gear. Add ~2-3 kg / 5 lbs for helmet, pads, pack, shoes. The bike isn't counted: its sprung weight adds roughly 5-10% to the rear load, more on e-bikes, so add some of it here if you want to account for it."
+            tip="Your body weight plus riding gear. Add ~2-3 kg / 5 lbs for helmet, pads, pack, shoes. E-bike: add about 14 kg / 30 lbs for the extra weight. On a normal bike, the bike's weight and a little preload roughly cancel out."
             value={displayWeight(vals.riderWeightKg)}
             onChange={(v) => set('riderWeightKg')(toKg(v))}
             unit={wUnit} min={weightLbs ? 66 : 30} max={weightLbs ? 440 : 200} step={weightLbs ? 1 : 0.5}
@@ -877,6 +811,81 @@ export default function SpringCalculator({ requestedBike = null }) {
               ))}
             </div>
           </div>
+
+          {/* Your bike's own numbers, tucked away: most riders never need them */}
+          {setupMode === 'type' && (
+            <div className="fold-block">
+              <div className="fold-head-row">
+                <button type="button" className="fold-head" onClick={() => setProgOpen((o) => !o)} aria-expanded={progOpen}>
+                  <Chevron open={progOpen} />
+                  Custom curve{' '}
+                  <span className="fold-tag">{customPreset ? '3 pts' : customProg !== null ? `${customProg}%` : 'optional'}</span>
+                </button>
+                <InfoIcon text={`End-to-end progression % — how much stiffer the suspension gets from top to bottom of travel. Most trail bikes are 15–25%.\n\nFormula: progression = (LR at top − LR at bottom) ÷ LR at top. A bike going 3.0 → 2.4 is (3.0 − 2.4) / 3.0 = 20%.\n\nThe reference value shown is typical for the selected suspension type. Override with your bike's actual number if you have it. The override uses a linear curve model.`} width={290} />
+              </div>
+              {progOpen && (
+                <div style={{ marginTop: 10 }}>
+                {selectedPreset && customProg === null && (
+                  <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-dim)', marginBottom: 6, paddingLeft: 2 }}>
+                    This type: <span style={{ color: selectedPreset.color }}>{selectedPreset.prog}%</span>. Override below with your bike's own figure.
+                  </div>
+                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ flex: 1 }}>
+                    <InputField
+                      label={customProg !== null ? 'Progression (linear model)' : 'Progression'}
+                      value={customProg !== null ? customProg : ''}
+                      onChange={(v) => { setCustomProg(Math.max(0, Math.min(50, v))); clearCurve() }}
+                      unit="%" min={0} max={50} step={1}
+                      tip="Optional. Enter your bike's actual end-to-end progression % from linkage software or manufacturer data. Overrides the suspension type preset with a linear curve model."
+                    />
+                  </div>
+                  {customProg !== null && (
+                    <button
+                      onClick={() => setCustomProg(null)}
+                      style={{ fontSize: 10, color: 'var(--text-dim)', background: 'none', border: '1px solid var(--border)', borderRadius: 4, padding: '3px 7px', cursor: 'pointer', marginTop: 18, whiteSpace: 'nowrap' }}
+                    >
+                      reset
+                    </button>
+                  )}
+                </div>
+
+                {/* Custom curve: 3 points the rider enters */}
+                <div style={{ marginTop: 12 }}>
+                  <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: customPreset ? 'var(--accent)' : 'var(--text-dim)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    Or a measured curve (3 pts)
+                    <InfoIcon text={`For bikes where you have the leverage numbers off a graph. Read LR at the top, middle, and bottom of travel and enter them here. The calculator uses the three values as entered, and works out the shock stroke they imply from your travel.`} width={290} />
+                    {customPreset && (
+                      <button onClick={clearCurve} style={{ marginLeft: 'auto', fontSize: 9, color: 'var(--text-dim)', background: 'none', border: '1px solid var(--border)', borderRadius: 4, padding: '2px 6px', cursor: 'pointer' }}>reset</button>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    {[['start', 'top', '0%'], ['mid', 'mid', '50%'], ['end', 'end', '100%']].map(([field, ph, pos]) => (
+                      <div key={field} style={{ flex: 1 }}>
+                        <input
+                          type="number" className="calc-input" style={{ width: '100%', textAlign: 'center', padding: '7px 6px' }}
+                          value={curveInput[field]} placeholder={ph}
+                          onChange={(e) => setCurveField(field)(e.target.value)}
+                          min={1} max={5} step={0.05}
+                        />
+                        <div style={{ fontSize: 9, color: 'var(--text-dim)', textAlign: 'center', marginTop: 3, fontFamily: 'var(--font-mono)' }}>{pos} · LR</div>
+                      </div>
+                    ))}
+                  </div>
+                  {customPreset && calc.usesAbsCurve && calc.effStroke && (
+                    <div style={{ fontSize: 9.5, fontFamily: 'var(--font-mono)', color: 'var(--text-dim)', marginTop: 7, lineHeight: 1.55 }}>
+                      Your numbers are used as-is. With {vals.wheelTravel}mm travel they imply a{' '}
+                      <span style={{ color: 'var(--accent)' }}>{calc.effStroke.toFixed(1)}mm stroke</span>, which the calc uses.
+                      {Math.abs(calc.effStroke - vals.shockStroke) / vals.shockStroke > 0.04 && (
+                        <span style={{ color: '#f0b429' }}> Your Shock Stroke field says {vals.shockStroke}mm — worth a re-check.</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+                </div>
+              )}
+            </div>
+          )}
 
         </div>
 

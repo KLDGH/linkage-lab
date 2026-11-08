@@ -115,8 +115,8 @@ The size of each correction depends on your sag, so the calculator works it out 
 
 ## Key assumptions
 
-**Rider weight only; bike weight is not counted yet.**
-The bike's sprung weight also loads the spring, adding roughly 5-10% to the rear load and more on e-bikes, so results can run slightly soft. Include it in the rider figure if you want to account for it.
+**Rider weight only; bike weight is not counted.**
+On a normal bike, the bike's sprung weight and a little preload roughly cancel out. E-bikes are heavy enough to matter: add about 14 kg / 30 lbs to the rider figure.
 
 **Rear weight bias is the biggest variable.**
 Most calculators (Fox, MRP, TF Tuned) bake in an assumed rear bias of ~60-65% without exposing it. This calculator makes it explicit. Default is 65%; slack enduro/DH bikes with rearward geometry can push 68-75%.
