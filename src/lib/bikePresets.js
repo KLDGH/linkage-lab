@@ -103,4 +103,19 @@ export const BIKE_PRESETS = [
       { t: 1.0, lr: 2.17 },
     ],
   },
+  {
+    id: 'dreadnought-v2',
+    color: '#65a30d',
+    name: 'Forbidden Dreadnought V2',
+    year: '2024',
+    travel: 160,
+    stroke: 60,
+    points: [
+      { t: 0.0, lr: 3.068 }, { t: 0.1, lr: 2.961 }, { t: 0.2, lr: 2.87 },
+      { t: 0.3, lr: 2.791 }, { t: 0.4, lr: 2.719 }, { t: 0.5, lr: 2.655 },
+      { t: 0.6, lr: 2.596 }, { t: 0.7, lr: 2.543 }, { t: 0.8, lr: 2.485 },
+      { t: 0.85, lr: 2.45 }, { t: 0.9, lr: 2.409 }, { t: 0.95, lr: 2.356 },
+      { t: 1.0, lr: 2.281 },
+    ],
+  },
 ]

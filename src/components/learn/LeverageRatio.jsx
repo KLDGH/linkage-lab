@@ -16,7 +16,7 @@ import { Slider, Choice, Readout, Takeaway } from './kit'
 // measured bikes from the calculator plus a flat reference.
 
 const FLAT = { id: 'flat', name: 'Flat reference', short: 'Flat', color: '#8896aa', points: [{ t: 0, lr: 2.6 }, { t: 1, lr: 2.6 }] }
-const SHORT = { 'druid-v2': 'Druid', 'sentinel-v3': 'Sentinel', 'bronson-v5': 'Bronson', 'ripmo-v3': 'Ripmo', claymore: 'Claymore', 'murmur-enduro-v3': 'Starling', sb160: 'SB160' }
+const SHORT = { 'druid-v2': 'Druid', 'sentinel-v3': 'Sentinel', 'bronson-v5': 'Bronson', 'ripmo-v3': 'Ripmo', claymore: 'Claymore', 'murmur-enduro-v3': 'Starling', sb160: 'SB160', 'dreadnought-v2': 'Dreadnought' }
 const CURVES = [FLAT, ...BIKE_PRESETS.map((b) => ({ ...b, short: SHORT[b.id] || b.name }))]
 
 export default function LeverageRatio() {
